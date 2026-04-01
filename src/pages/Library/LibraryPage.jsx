@@ -16,12 +16,10 @@ import { useTheme } from '../../context/ThemeContext';
 const LibraryPage = () => {
   const {
     playTrack, currentTrack, isPlaying, addToQueue,
-    playNext, playPlaylist, isSpotifySyncEnabled, spotifyToken,
-    isSyncing, setIsSyncing, syncStatus, importSpotify,
-    librarySortBy: sortBy, setLibrarySortBy: setSortBy,
-    librarySortOrder: sortOrder, setLibrarySortOrder: setSortOrder
+    playNext, playPlaylist, spotifyToken
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
+  
   const [collection, setCollection] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
@@ -29,72 +27,28 @@ const LibraryPage = () => {
   const [message, setMessage] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
   const [showClearSpotifyConfirm, setShowClearSpotifyConfirm] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState({ total: 0, current: 0 });
 
+  const [sortBy, setSortBy] = useState('recent');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [hideSpotify, setHideSpotify] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const hasSpotifyTracks = useMemo(() =>
-    collection.some(item => item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify'))),
-    [collection]
-  );
-
   const itemsPerPage = 50;
-
   const user = authService.getCurrentUser();
 
-  const handleImportSpotify = async () => {
-    if (!spotifyToken || isSyncing) return;
-
-    try {
-      await importSpotify();
-      // Recarregar a coleção após a importação global terminar
-      const updatedData = await musicService.getCollection(user.id);
-      setCollection(Array.isArray(updatedData) ? updatedData : []);
-    } catch (err) {
-      console.error("Erro na importação vinda da Library:", err);
-      setMessage({ type: 'error', text: 'Falha ao realizar importação do Spotify.' });
-    }
-  };
-
-
-
-
-
-  const handleClearSpotify = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    setShowClearSpotifyConfirm(false);
-    setMessage({ type: 'info', text: 'Removendo todas as músicas do Spotify da sua biblioteca...' });
-
-    try {
-      const deletedCount = await musicService.deleteBySource(user.id, 'SPOTIFY');
-      await fetchCollection();
-      setMessage({ type: 'success', text: `Limpeza concluída! ${deletedCount || 0} músicas do Spotify removidas com sucesso.` });
-    } catch (err) {
-      console.error("Erro ao limpar Spotify:", err);
-      setMessage({ type: 'error', text: 'Falha ao remover músicas do Spotify.' });
-    } finally {
-      setIsSyncing(false);
-      setTimeout(() => setMessage(null), 5000);
-    }
-  };
-
-
   const fetchCollection = async () => {
-    // Se for convidado ou não houver usuário logado, não busca do servidor
-    if (!user || user.guest) {
-      setLoading(false);
-      return;
-    }
-
+    if (!user || authService.isGuest()) return;
+    setLoading(true);
     try {
       const data = await musicService.getCollection(user.id);
       setCollection(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Fetch collection error:', err);
-      setMessage({ type: 'error', text: 'Não foi possível carregar suas curtidas.' });
+      console.error("Error fetching collection:", err);
+      setMessage({ type: 'error', text: 'Erro ao carregar sua biblioteca.' });
     } finally {
       setLoading(false);
     }
@@ -104,21 +58,82 @@ const LibraryPage = () => {
     fetchCollection();
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [sortBy, hideSpotify, searchTerm]);
-
-  const removeMusic = async (trackId) => {
-    if (!user || user.guest || !trackId) return;
-    setDeletingId(trackId);
+  const handleImportSpotify = async () => {
+    if (!spotifyToken || isSyncing) return;
+    setIsSyncing(true);
+    setSyncStatus({ total: 0, current: 0 });
+    
     try {
-      await musicService.removeFromCollection(user.id, trackId);
-      setCollection(prev => prev.filter(item => item?.music?.id !== trackId));
-      setMessage({ type: 'success', text: 'Música removida das curtidas.' });
-      setTimeout(() => setMessage(null), 3000);
+      // Lógica simplificada de importação local
+      let offset = 0;
+      let hasMore = true;
+      const existingIds = new Set(collection.map(item => item.music?.trackId || item.music?.id));
+
+      while (hasMore) {
+        const data = await spotifyService.getSavedTracks(spotifyToken, 50, offset);
+        const tracks = data.items || [];
+        
+        if (offset === 0) setSyncStatus({ total: data.total || 0, current: 0 });
+        if (tracks.length === 0) break;
+
+        for (const item of tracks) {
+          const t = item.track;
+          if (t && !existingIds.has(t.id)) {
+            await musicService.saveToCollection(user.id, {
+              trackId: String(t.id),
+              nome: t.name,
+              artista: t.artists[0]?.name,
+              album: t.album.name,
+              capaUrl: t.album.images[0]?.url,
+              previewUrl: t.preview_url || '',
+              source: 'SPOTIFY'
+            });
+            existingIds.add(t.id);
+          }
+        }
+
+        setSyncStatus(prev => ({ ...prev, current: Math.min(prev.total, offset + tracks.length) }));
+        if (data.next) offset += 50; else hasMore = false;
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      await fetchCollection();
+      setMessage({ type: 'success', text: 'Importação concluída com sucesso!' });
+    } catch (err) {
+      console.error("Import error:", err);
+      setMessage({ type: 'error', text: 'Falha na importação.' });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus({ total: 0, current: 0 }), 5000);
+    }
+  };
+
+  const handleClearSpotify = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setShowClearSpotifyConfirm(false);
+    try {
+      const deletedCount = await musicService.deleteBySource(user.id, 'SPOTIFY');
+      await fetchCollection();
+      setMessage({ type: 'success', text: `${deletedCount} músicas removidas.` });
+    } catch (err) {
+      console.error("Clear error:", err);
+      setMessage({ type: 'error', text: 'Falha ao limpar biblioteca.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const removeMusic = async (recordId) => {
+    if (!user || !recordId) return;
+    setDeletingId(recordId);
+    try {
+      await musicService.removeFromCollection(user.id, recordId);
+      setCollection(prev => prev.filter(item => item.id !== recordId && (item.music?.id !== recordId && item.music?.trackId !== recordId)));
+      setMessage({ type: 'success', text: 'Música removida.' });
     } catch (err) {
       console.error('Delete error:', err);
-      setMessage({ type: 'error', text: 'Erro ao remover música das curtidas.' });
+      setMessage({ type: 'error', text: 'Erro ao remover música.' });
     } finally {
       setDeletingId(null);
       setShowConfirm(null);

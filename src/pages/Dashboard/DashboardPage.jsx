@@ -8,18 +8,17 @@ import { useTheme } from '../../context/ThemeContext';
 
 const DashboardPage = () => {
   const { playTrack, currentTrack, isPlaying, addToQueue, playNext } = useAudio();
+  const [addedIds, setAddedIds] = useState(new Set());
   const { viewMode, toggleViewMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('all'); // all, title, artist, album
   const [musics, setMusics] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [savingId, setSavingId] = useState(null);
   const [message, setMessage] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [addedIds, setAddedIds] = useState([]);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -185,70 +184,39 @@ const DashboardPage = () => {
     }
   };
 
-  const saveMusic = async (musicObj) => {
-    if (!musicObj) return;
-    const trackId = typeof musicObj === 'object' ? (musicObj.id || musicObj.trackId) : musicObj;
-    
-    if (!trackId || trackId === 'undefined') {
-      console.error("Tentativa de salvar música com trackId inválido:", musicObj);
-      setMessage({ type: 'error', text: 'Dados da música inválidos para salvar.' });
-      return;
-    }
-
+  const saveMusic = async (track) => {
     if (authService.isGuest()) {
-      setMessage({ type: 'error', text: 'Crie uma conta ou entre para curtir músicas e salvá-las!' });
+      setMessage({ type: 'error', text: 'Crie uma conta para salvar músicas na sua coleção!' });
       return;
     }
-    if (!user) return;
 
-    setSavingId(trackId);
     try {
-      const currentCollection = await musicService.getCollection(user.id);
-
-      // Comparação robusta: procura nos campos da música aninhada ou no topo
-      const isAlreadyAdded = currentCollection.some(item => {
-        const idInCollection = item.music?.id || item.id;
-        const trackIdInCollection = item.music?.trackId || item.trackId;
-
-        return String(idInCollection) === String(trackId) ||
-          String(trackIdInCollection) === String(trackId);
-      });
-
-      if (isAlreadyAdded) {
-        setMessage({ type: 'error', text: 'Esta música já está na sua biblioteca!' });
-        setTimeout(() => setMessage(null), 3000);
-        return;
-      }
-
       const musicData = {
-        trackId: String(trackId),
-        nome: musicObj.nome || "Faixa Desconhecida",
-        artista: musicObj.artista || "Artista Desconhecido",
-        album: musicObj.album || "",
-        capaUrl: musicObj.capaUrl || "/default-album.png",
-        previewUrl: musicObj.previewUrl || "",
-        source: (musicObj.isSpotify || (musicObj.uri && musicObj.uri.includes('spotify'))) ? "SPOTIFY" : "ITUNES"
+        trackId: String(track.trackId || track.id),
+        nome: track.nome,
+        artista: track.artista,
+        album: track.album || '',
+        capaUrl: track.capaUrl,
+        previewUrl: track.previewUrl || '',
+        source: track.source || (track.isSpotify ? 'SPOTIFY' : 'ITUNES')
       };
 
       await musicService.saveToCollection(user.id, musicData);
-      setAddedIds(prev => [...prev, String(trackId)]);
-      // Still show global success message for clarity, but UI will reflect it inline
-      setMessage({ type: 'success', text: 'Música adicionada às suas curtidas!' });
+      
+      setAddedIds(prev => {
+        const next = new Set(prev);
+        next.add(track.trackId || track.id);
+        return next;
+      });
+      
+      setMessage({ type: 'success', text: 'Música salva na sua coleção!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
-
       console.error('Save error:', err);
-      // Se o backend retornar erro de conflito (409) ou mensagem de duplicado
-      if (err.response?.status === 409 || err.response?.data?.includes('já existe')) {
-        setMessage({ type: 'error', text: 'Esta música já está na sua biblioteca!' });
-      } else {
-        setMessage({ type: 'error', text: 'Erro ao salvar música. Tente novamente mais tarde.' });
-      }
-      setTimeout(() => setMessage(null), 3000);
-    } finally {
-      setSavingId(null);
+      setMessage({ type: 'error', text: 'Erro ao salvar música.' });
     }
   };
+
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-32 md:pb-8">
@@ -485,21 +453,14 @@ const DashboardPage = () => {
 
                       <button
                         onClick={() => saveMusic(music)}
-                        disabled={savingId === music.id || addedIds.includes(String(music.id))}
                         className={`p-2 rounded-full transition-all shrink-0 ${
-                          addedIds.includes(String(music.id)) 
-                            ? 'bg-green-500/10 text-green-500 cursor-default' 
+                          addedIds.has(music.trackId || music.id) 
+                            ? 'bg-green-500 text-white shadow-lg shadow-green-500/20 scale-110' 
                             : 'hover:bg-brand/20 text-brand'
                         }`}
-                        title={addedIds.includes(String(music.id)) ? "Já está nas curtidas" : "Curtir Música"}
+                        title={addedIds.has(music.trackId || music.id) ? "Salva na coleção" : "Salvar na Coleção"}
                       >
-                        {savingId === music.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : addedIds.includes(String(music.id)) ? (
-                          <Check size={18} className="animate-in zoom-in duration-300" />
-                        ) : (
-                          <Heart size={18} />
-                        )}
+                        {addedIds.has(music.trackId || music.id) ? <Check size={18} /> : <Heart size={18} />}
                       </button>
                     </div>
                   </div>
@@ -573,20 +534,14 @@ const DashboardPage = () => {
                         </button>
                         <button
                           onClick={() => saveMusic(music)}
-                          disabled={savingId === music.id || addedIds.includes(String(music.id))}
                           className={`p-2 rounded-full transition-all ${
-                            addedIds.includes(String(music.id)) 
-                              ? 'text-green-500 cursor-default' 
+                            addedIds.has(music.trackId || music.id) 
+                              ? 'text-green-500' 
                               : 'text-dim hover:text-brand hover:bg-brand/10'
                           }`}
+                          title={addedIds.has(music.trackId || music.id) ? "Salva na coleção" : "Salvar na Coleção"}
                         >
-                          {savingId === music.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : addedIds.includes(String(music.id)) ? (
-                            <Check size={18} />
-                          ) : (
-                            <Heart size={18} />
-                          )}
+                          {addedIds.has(music.trackId || music.id) ? <Check size={18} /> : <Heart size={18} />}
                         </button>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/authService';
 import { musicService } from '../services/musicService';
 import { spotifyService } from '../services/spotifyService';
@@ -56,19 +56,13 @@ export const AudioProvider = ({ children }) => {
 
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(-1);
-  const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [playbackMode, setPlaybackMode] = useState('NATURAL');
   const [isSpotifySyncEnabled, setIsSpotifySyncEnabled] = useState(() => {
     return localStorage.getItem('synfonia-spotify-sync') !== 'false';
   });
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState({ total: 0, current: 0 });
   const volumeRef = useRef(0.7);
 
-  // Estados de ordenação para persistir durante a navegação (resetam no F5)
-  const [librarySortBy, setLibrarySortBy] = useState('name');
-  const [librarySortOrder, setLibrarySortOrder] = useState('asc'); 
 
   // Sync internal refs for use in event listeners
   const queueRef = useRef([]);
@@ -463,149 +457,6 @@ export const AudioProvider = ({ children }) => {
       return newValue;
     });
   }, []);
-
-  const fetchFavorites = useCallback(async () => {
-    const user = authService.getCurrentUser();
-    if (!user || authService.isGuest()) return;
-    
-    try {
-      const collection = await musicService.getCollection(user.id);
-      const ids = new Set(collection.map(item => item.music?.trackId || item.music?.id).filter(Boolean));
-      setFavoriteIds(ids);
-    } catch (err) {
-      console.error("Error fetching favorites:", err);
-    }
-  }, []);
-
-  const toggleFavorite = useCallback(async (track) => {
-    const user = authService.getCurrentUser();
-    if (!user || authService.isGuest() || !track) return;
-
-    const trackId = track.trackId || track.id;
-    const isCurrentlyFavorite = favoriteIds.has(trackId);
-
-    try {
-      if (isCurrentlyFavorite) {
-        await musicService.removeFromCollection(user.id, trackId);
-        
-        // Sincronizar com Spotify se habilitado
-        if (isSpotifySyncEnabledRef.current && spotifyToken && (track.isSpotify || track.source === 'SPOTIFY' || track.trackId)) {
-          spotifyService.toggleLike(spotifyToken, trackId, false);
-        }
-
-        setFavoriteIds(prev => {
-          const next = new Set(prev);
-          next.delete(trackId);
-          return next;
-        });
-      } else {
-        const musicData = {
-          trackId: String(trackId),
-          nome: track.nome,
-          artista: track.artista,
-          album: track.album || '',
-          capaUrl: track.capaUrl,
-          previewUrl: track.previewUrl || '',
-          source: track.source || (track.isSpotify ? 'SPOTIFY' : 'ITUNES')
-        };
-        await musicService.saveToCollection(user.id, musicData);
-
-        // Sincronizar com Spotify se habilitado
-        if (isSpotifySyncEnabledRef.current && spotifyToken && (track.isSpotify || track.source === 'SPOTIFY' || track.trackId)) {
-          spotifyService.toggleLike(spotifyToken, trackId, true);
-        }
-
-        setFavoriteIds(prev => {
-          const next = new Set(prev);
-          next.add(trackId);
-          return next;
-        });
-      }
-    } catch (err) {
-      console.error("Error toggling favorite:", err);
-    }
-  }, [favoriteIds]);
-
-  const importSpotify = useCallback(async () => {
-    const user = authService.getCurrentUser();
-    if (!user || !spotifyToken || isSyncing) return;
-
-    setIsSyncing(true);
-    setSyncStatus({ total: 0, current: 0 });
-
-    try {
-      let offset = 0;
-      let hasMore = true;
-      
-      // Precisamos dos IDs atuais para evitar duplicatas
-      const currentCollection = await musicService.getCollection(user.id);
-      const existingIds = new Set(currentCollection.map(item => item.music?.trackId || item.music?.id));
-
-      while (hasMore) {
-        const data = await spotifyService.getSavedTracks(spotifyToken, 50, offset);
-        const spotifyTracks = data.items || [];
-        
-        if (offset === 0) {
-          setSyncStatus({ total: data.total || 0, current: 0 });
-        }
-
-        if (spotifyTracks.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        for (const item of spotifyTracks) {
-          const track = item.track;
-          if (!track) continue;
-          
-          if (!existingIds.has(track.id)) {
-            const musicData = {
-              trackId: String(track.id),
-              nome: track.name,
-              artista: track.artists[0]?.name,
-              album: track.album.name,
-              capaUrl: track.album.images[0]?.url,
-              previewUrl: track.preview_url || '',
-              source: 'SPOTIFY'
-            };
-            await musicService.saveToCollection(user.id, musicData);
-            existingIds.add(track.id);
-          }
-        }
-
-        setSyncStatus(prev => ({ 
-          ...prev, 
-          current: Math.min(prev.total, offset + spotifyTracks.length) 
-        }));
-
-        if (data.next) {
-          offset += 50;
-        } else {
-          hasMore = false;
-        }
-        
-        await new Promise(r => setTimeout(r, 100));
-      }
-
-      // Atualizar favoritos localmente após completar
-      await fetchFavorites();
-      
-      return { success: true };
-    } catch (err) {
-      console.error("Global Spotify Sync Error:", err);
-      throw err;
-    } finally {
-      setIsSyncing(false);
-      // Mantemos o syncStatus por alguns segundos para a UI mostrar 100%
-      setTimeout(() => setSyncStatus({ total: 0, current: 0 }), 5000);
-    }
-  }, [spotifyToken, isSyncing, fetchFavorites]);
-
-  useEffect(() => {
-    fetchFavorites();
-  }, [fetchFavorites]);
-
-
 
   const addToQueue = (track) => {
     setQueue(prev => [...prev, track]);
@@ -1389,9 +1240,6 @@ export const AudioProvider = ({ children }) => {
       togglePlay,
       skipNext,
       skipPrevious,
-      favoriteIds,
-      toggleFavorite,
-      refreshFavorites: fetchFavorites,
       isAutoplayEnabled,
       setIsAutoplayEnabled,
       isFavoriteAutoplayEnabled,
@@ -1419,14 +1267,6 @@ export const AudioProvider = ({ children }) => {
       playbackMode,
       playProfileAudio,
       stopProfileAudio,
-      isSyncing,
-      setIsSyncing,
-      syncStatus,
-      importSpotify,
-      librarySortBy,
-      setLibrarySortBy,
-      librarySortOrder,
-      setLibrarySortOrder,
       seek: (time) => {
         if (isSpotifyPlayback && spotifyPlayerRef.current) {
           spotifyPlayerRef.current.seek(time * 1000);
@@ -1455,7 +1295,6 @@ export const AudioProvider = ({ children }) => {
         variant="primary"
       />
 
-      <GlobalSyncProgress />
     </PlayerContext.Provider>
   );
 };
