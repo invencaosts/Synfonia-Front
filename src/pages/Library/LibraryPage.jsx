@@ -16,7 +16,7 @@ import { useTheme } from '../../context/ThemeContext';
 const LibraryPage = () => {
   const {
     playTrack, currentTrack, isPlaying, addToQueue,
-    playNext, playPlaylist, spotifyToken
+    playNext, playPlaylist, spotifyToken, isSpotifySyncEnabled
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
   
@@ -39,6 +39,14 @@ const LibraryPage = () => {
 
   const itemsPerPage = 50;
   const user = authService.getCurrentUser();
+
+  const hasSpotifyTracks = useMemo(() => {
+     return collection.some(item => 
+       item.music?.source === 'SPOTIFY' || 
+       (item.music?.uri && item.music.uri.includes('spotify')) ||
+       item.music?.isSpotify === true
+     );
+  }, [collection]);
 
   const fetchCollection = async () => {
     if (!user || authService.isGuest()) return;
