@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate, Outlet } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { Music, LayoutDashboard, Heart, Settings, LogOut, User, ListMusic, Instagram, Linkedin } from 'lucide-react';
 import { authService } from '../services/authService';
 import Logo from '../components/Logo';
@@ -11,6 +11,8 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const MainLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef(null);
   const { currentTrack } = useAudio();
   const { isImporting, importProgress, isExporting, exportProgress } = useImport();
   const [user, setUser] = React.useState(authService.getCurrentUser());
@@ -29,6 +31,13 @@ const MainLayout = () => {
       window.removeEventListener('userUpdate', handleUserUpdate);
     };
   }, []);
+
+  // Scrolla para o topo toda vez que a rota mudar
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
 
   const handleLogout = () => {
     authService.logout();
@@ -93,11 +102,11 @@ const MainLayout = () => {
               {user?.fotoPerfil && !authService.isGuest() ? (
                 <img src={user.fotoPerfil} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                user?.nomeCompleto?.charAt(0) || <User size={20} />
+                user?.displayName?.charAt(0) || <User size={20} />
               )}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate text-main">{user?.nomeCompleto || (authService.isGuest() ? 'Convidado' : 'Usuário')}</p>
+              <p className="text-sm font-medium truncate text-main">{user?.displayName || (authService.isGuest() ? 'Convidado' : 'Usuário')}</p>
               <p className="text-xs text-dim truncate">
                 {authService.isGuest() ? 'Modo Visitante' : 'Membro Ativo'}
               </p>
@@ -177,7 +186,7 @@ const MainLayout = () => {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 custom-scrollbar">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 custom-scrollbar">
           <Outlet />
         </main>
 

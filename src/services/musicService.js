@@ -8,18 +8,18 @@ export const musicService = {
     return response.data;
   },
 
-  saveToCollection: async (userId, musicData) => {
-    const response = await api.post(`/users/${userId}/songs`, musicData);
+  saveToCollection: async (musicData) => {
+    const response = await api.post('/users/me/songs', musicData);
     return response.data;
   },
 
-  getCollection: async (userId) => {
-    const response = await api.get(`/users/${userId}/songs`);
+  getCollection: async () => {
+    const response = await api.get('/users/me/songs');
     return response.data;
   },
 
-  removeFromCollection: async (userId, trackId) => {
-    await api.delete(`/users/${userId}/songs/${trackId}`);
+  removeFromCollection: async (trackId) => {
+    await api.delete(`/users/me/songs/${trackId}`);
   },
 
   getById: async (id) => {
@@ -37,8 +37,8 @@ export const musicService = {
   },
 
   // Remover músicas por fonte (Ex: SPOTIFY)
-  deleteBySource: async (userId, source) => {
-    const response = await api.delete(`/users/${userId}/songs/source/${source}`);
+  deleteBySource: async (source) => {
+    const response = await api.delete(`/users/me/songs/source/${source}`);
     return response.data;
   }
 

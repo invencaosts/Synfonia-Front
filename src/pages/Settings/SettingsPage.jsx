@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useTheme, hexToRgb, getContrastColor, getLegibleColor, hasPoorContrast } from '../../context/ThemeContext';
 import { useAudio } from '../../hooks/useAudio';
 import { authService } from '../../services/authService';
-import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle } from 'lucide-react';
+import { userService } from '../../services/userService';
+import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut } from 'lucide-react';
 import ColorPicker from '../../components/ui/ColorPicker';
 import Button from '../../components/ui/Button';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
@@ -23,6 +24,53 @@ const SettingsPage = () => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [pendingColorConfig, setPendingColorConfig] = useState(null);
   const [showSpotifyDisconnect, setShowSpotifyDisconnect] = useState(false);
+
+  // New Privacy States
+  const isGuest = authService.isGuest();
+  const [user, setUser] = useState(authService.getCurrentUser());
+  const [showPersonalName, setShowPersonalName] = useState(user?.showPersonalName ?? true);
+  const [showSpotifyActivity, setShowSpotifyActivity] = useState(user?.showSpotifyActivity ?? true);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const handlePrivacyToggle = async (key) => {
+    try {
+      if (key === 'personalName') {
+        const newValue = !showPersonalName;
+        setShowPersonalName(newValue);
+        if (!isGuest) {
+          const updatedUser = await userService.updateProfile({ showPersonalName: newValue });
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          window.dispatchEvent(new Event('userUpdate'));
+          setUser(updatedUser);
+        }
+      } else if (key === 'spotifyActivity') {
+        const newValue = !showSpotifyActivity;
+        setShowSpotifyActivity(newValue);
+        if (!isGuest) {
+          const updatedUser = await userService.updateProfile({ showSpotifyActivity: newValue });
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          window.dispatchEvent(new Event('userUpdate'));
+          setUser(updatedUser);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setIsDeactivating(true);
+    try {
+      await userService.deactivateAccount();
+      authService.logout();
+    } catch (err) {
+      alert(err.response?.data?.detalhe || 'Falha ao desativar conta.');
+    } finally {
+      setIsDeactivating(false);
+      setShowDeactivateConfirm(false);
+    }
+  };
 
   const handleColorSelection = (type, color) => {
     if (!color || (type === 'accent' && color === '#8b5cf6')) {
@@ -76,7 +124,6 @@ const SettingsPage = () => {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const maxFontSize = isMobile ? 2 : 4;
-  const isGuest = authService.isGuest();
 
   const accentInputRef = useRef(null);
   const songInputRef = useRef(null);
@@ -458,6 +505,70 @@ const SettingsPage = () => {
         </div>
       </section>
 
+      {/* Seção de Privacidade e Conta */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 pb-2 border-b border-(--border-subtle)">
+          <ShieldCheck className="text-brand-legible" size={20} />
+          <h2 className="text-xl font-bold uppercase tracking-wider text-main">Privacidade e Conta</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) flex items-center justify-between group opacity-100">
+            <div className="flex items-center gap-3">
+              <Type size={20} className="text-dim" />
+              <div className="flex flex-col">
+                <span className="font-bold text-main">Nome Pessoal Público</span>
+                <span className="text-[10px] text-dim">Mostrar seu nome real no perfil</span>
+              </div>
+            </div>
+            <button
+              onClick={() => handlePrivacyToggle('personalName')}
+              disabled={isGuest}
+              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${!isGuest && showPersonalName ? 'bg-brand shadow-[0_0_10px_rgba(var(--color-brand-rgb),0.3)]' : 'bg-(--bg-side)'} ${isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className={`w-4 h-4 rounded-full absolute top-1 transition-all duration-300 ${!isGuest && showPersonalName ? 'right-1 bg-brand-contrast' : 'left-1 bg-white'}`} />
+            </button>
+          </div>
+
+          <div className="p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) flex items-center justify-between group opacity-100">
+            <div className="flex items-center gap-3">
+              <Music2 size={20} className="text-green-500" />
+              <div className="flex flex-col">
+                <span className="font-bold text-main">Atividade do Spotify</span>
+                <span className="text-[10px] text-dim">Mostrar o que você está escutando</span>
+              </div>
+            </div>
+            <button
+              onClick={() => handlePrivacyToggle('spotifyActivity')}
+              disabled={isGuest}
+              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${!isGuest && showSpotifyActivity ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : 'bg-(--bg-side)'} ${isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className={`w-4 h-4 rounded-full absolute top-1 transition-all duration-300 stroke-white ${!isGuest && showSpotifyActivity ? 'right-1 bg-white' : 'left-1 bg-white'}`} />
+            </button>
+          </div>
+
+          {!isGuest && (
+            <div className="col-span-1 md:col-span-2 p-6 rounded-[24px] bg-red-500/5 border border-red-500/20 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <LogOut size={20} className="text-red-500" />
+                  <div className="flex flex-col">
+                    <span className="font-bold text-red-500">Desativar Conta</span>
+                    <span className="text-[10px] text-red-500/80">Ocultar seu perfil e pausar seu uso por até 7 dias</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeactivateConfirm(true)}
+                className="w-full py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 bg-red-500/10 text-red-500 hover:bg-red-500/20"
+              >
+                Desativar Minha Conta
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
       <div className="pt-10 flex justify-center">
         <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-bold">
           Synfonia Experience v1.0 • Made with ✨
@@ -503,6 +614,17 @@ const SettingsPage = () => {
         cancelText="Cancelar"
         variant="danger"
         icon={Music2}
+      />
+
+      <ConfirmationDialog
+        isOpen={showDeactivateConfirm}
+        onClose={() => setShowDeactivateConfirm(false)}
+        onConfirm={handleDeactivate}
+        title="Desativar Conta"
+        message="Sua conta ficará invisível. Você tem até 7 dias para fazer login novamente e reativá-la. Depois disso, ela será excluída permanentemente. Deseja continuar?"
+        confirmText={isDeactivating ? "Processando..." : "Desativar Conta"}
+        cancelText="Cancelar"
+        icon={AlertCircle}
       />
     </div>
   );

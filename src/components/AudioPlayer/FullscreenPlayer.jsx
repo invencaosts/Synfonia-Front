@@ -112,9 +112,9 @@ const FullscreenPlayer = ({ onClose }) => {
   };
 
   const isFavorite = favoriteIds instanceof Set
-    ? favoriteIds.has(currentTrack.trackId || currentTrack.id)
+    ? favoriteIds.has(String(currentTrack.trackId || currentTrack.id))
     : Array.isArray(favoriteIds)
-      ? favoriteIds.includes(currentTrack.trackId || currentTrack.id)
+      ? favoriteIds.includes(String(currentTrack.trackId || currentTrack.id))
       : false;
 
   return (

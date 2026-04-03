@@ -63,6 +63,12 @@ export const AudioProvider = ({ children }) => {
   });
   const volumeRef = useRef(0.7);
 
+  // Estados de Favoritos Centralizados
+  const [favorites, setFavorites] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [isFavoritesLoaded, setIsFavoritesLoaded] = useState(false);
+  const [isRefreshingFavorites, setIsRefreshingFavorites] = useState(false);
+
 
   // Sync internal refs for use in event listeners
   const queueRef = useRef([]);
@@ -152,6 +158,108 @@ export const AudioProvider = ({ children }) => {
       }, stepDuration);
     });
   }, []);
+
+  // Lógica de Favoritos Global
+  const refreshFavorites = useCallback(async (force = false) => {
+    const user = authService.getCurrentUser();
+    if (!user || user.guest || (isFavoritesLoaded && !force) || isRefreshingFavorites) return;
+
+    setIsRefreshingFavorites(true);
+    try {
+      const data = await musicService.getCollection();
+      const collection = Array.isArray(data) ? data : [];
+      setFavorites(collection);
+      
+      const ids = new Set();
+      collection.forEach(item => {
+        if (item.music) {
+          if (item.music.trackId) ids.add(String(item.music.trackId));
+          if (item.music.id) ids.add(String(item.music.id));
+        }
+      });
+      setFavoriteIds(ids);
+      setIsFavoritesLoaded(true);
+    } catch (err) {
+      console.error("AudioContext: Erro ao carregar favoritos:", err);
+    } finally {
+      setIsRefreshingFavorites(false);
+    }
+  }, [isFavoritesLoaded, isRefreshingFavorites]);
+
+  // Carregar favoritos ao logar
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (user && !user.guest && !isFavoritesLoaded) {
+      refreshFavorites();
+    } else if (!user || user.guest) {
+      setFavorites([]);
+      setFavoriteIds(new Set());
+      setIsFavoritesLoaded(false);
+    }
+  }, [spotifyToken, isFavoritesLoaded, refreshFavorites]);
+
+  const toggleFavorite = useCallback(async (track) => {
+    const user = authService.getCurrentUser();
+    if (!user || user.guest || !track) return;
+
+    const trackId = String(track.trackId || track.id);
+    const isFavorite = favoriteIds.has(trackId);
+
+    try {
+      if (isFavorite) {
+        // Encontrar o recordId (ID da relação na coleção) para deletar
+        const record = favorites.find(f => 
+          f.music && (String(f.music.trackId) === trackId || String(f.music.id) === trackId)
+        );
+        const idToDelete = record ? record.id : trackId;
+        
+        await musicService.removeFromCollection(idToDelete);
+        
+        // Update Local State
+        setFavorites(prev => prev.filter(f => f.id !== idToDelete && 
+          !(f.music && (String(f.music.trackId) === trackId || String(f.music.id) === trackId))
+        ));
+        setFavoriteIds(prev => {
+          const next = new Set(prev);
+          next.delete(trackId);
+          return next;
+        });
+      } else {
+        const musicData = {
+          trackId: track.trackId || String(track.id),
+          nome: track.nome,
+          artista: track.artista,
+          album: track.album || "",
+          capaUrl: track.capaUrl || "",
+          previewUrl: track.previewUrl || track.preview_url || "",
+          source: (track.isSpotify || track.source === "SPOTIFY" || (track.uri && track.uri.includes('spotify'))) ? "SPOTIFY" : "ITUNES"
+        };
+        
+        const responseRecord = await musicService.saveToCollection(musicData);
+        
+        // Ensure newRecord has the structure { id, dataAdicao, music: { ... } }
+        // If responseRecord.music is missing, we use the original track data
+        const newRecord = {
+          ...responseRecord,
+          dataAdicao: responseRecord.dataAdicao || new Date().toISOString(),
+          music: responseRecord.music || {
+            ...musicData,
+            id: responseRecord.trackId || musicData.trackId
+          }
+        };
+        
+        // Update Local State
+        setFavorites(prev => [newRecord, ...prev]);
+        setFavoriteIds(prev => {
+          const next = new Set(prev);
+          next.add(trackId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("AudioContext: Erro ao alternar favorito:", err);
+    }
+  }, [favoriteIds, favorites]);
 
   const stopProfileAudio = useCallback(() => {
     if (profileAudioRef.current) {
@@ -1276,7 +1384,12 @@ export const AudioProvider = ({ children }) => {
           setCurrentTime(time);
         }
       },
-      audioElement: audioRef.current
+      audioElement: audioRef.current,
+      favorites,
+      favoriteIds,
+      isFavoritesLoaded,
+      refreshFavorites,
+      toggleFavorite
     }}>
       {children}
 

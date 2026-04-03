@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   User, 
   Settings, 
@@ -8,18 +8,11 @@ import {
   ExternalLink, 
   Instagram, 
   Music2, 
-  Check, 
-  Camera, 
-  LogOut,
-  Youtube,
-  Globe,
-  Settings2,
+  Music, Camera, Play, Check, LogOut, Search as SearchIcon, 
+  Loader2, Settings2, Globe, Youtube, AlertCircle, User as UserIcon, Type, Eye, EyeOff,
   Lock,
   Pause,
-  Play,
   Heart,
-  Search as SearchIcon,
-  Loader2,
   Plus,
   ListMusic,
   Repeat,
@@ -42,6 +35,16 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 
+const containsEmoji = (str) => {
+  if (!str) return false;
+  return /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/.test(str);
+};
+
+const isValidPersonalName = (str) => {
+  if (!str) return true;
+  return /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]*$/.test(str);
+};
+
 const VIBE_PRESETS = [
   { icon: Smile, label: 'Feliz', value: 'feliz' },
   { icon: Frown, label: 'Triste', value: 'triste' },
@@ -59,10 +62,18 @@ const AVATAR_PRESETS = [
   { name: 'Composer', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop' },
 ];
 
+const NAME_REGEX = /^[a-zA-Z0-9_ ]{3,20}$/;
+
 const ProfilePage = () => {
   const [user, setUser] = React.useState(authService.getCurrentUser());
   const [showAvatars, setShowAvatars] = React.useState(false);
-  const [showSocialModal, setShowSocialModal] = React.useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [isUpdatingIdentity, setIsUpdatingIdentity] = useState(false);
+  const [identityData, setIdentityData] = useState({
+    displayName: '',
+    personalName: ''
+  });
   const [copied, setCopied] = React.useState(false);
   const [songCount, setSongCount] = React.useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
@@ -91,9 +102,10 @@ const ProfilePage = () => {
     stopProfileAudio,
     playPlaylist,
     spotifyNowPlaying,
-    isSpotifySyncEnabled,
-    setIsSpotifySyncEnabled,
-    isSpotifyConnected
+    isSpotifyConnected,
+    favorites,
+    isFavoritesLoaded,
+    refreshFavorites
   } = useAudio();
   const { 
     resetToDefaults, 
@@ -116,9 +128,11 @@ const ProfilePage = () => {
     const fetchStats = async () => {
       if (!isGuest && user?.id) {
         try {
-          // Buscamos o total de músicas da coleção
-          const collection = await musicService.getCollection(user.id);
-          setSongCount(collection?.length || 0);
+          // Usamos o cache global se disponível, senão forçamos o carregamento
+          if (!isFavoritesLoaded) {
+            await refreshFavorites();
+          }
+          setSongCount(favorites?.length || 0);
 
           // Buscar playlists públicas (essa chamada é leve)
           const userPlaylists = await playlistService.getPublicByUserId(user.id);
@@ -160,16 +174,13 @@ const ProfilePage = () => {
     if (isGuest || !user?.id) return;
     setSearching(true);
     try {
-      const data = await musicService.getCollection(user.id);
-      setSongCount(data?.length || 0);
-      const songs = Array.isArray(data) ? data.map(item => item?.music).filter(Boolean) : [];
-
+      // Usar os favoritos globais já carregados
+      const songs = Array.isArray(favorites) ? favorites.map(item => item?.music).filter(Boolean) : [];
+      setSongCount(favorites?.length || 0);
       
       const filtered = !isSpotifyConnected 
         ? songs.filter(s => s && s.source !== 'SPOTIFY' && !(s.uri && s.uri.includes('spotify')))
         : songs;
-
-
 
       setLibrarySongs(filtered);
       setSearchResults(filtered);
@@ -388,11 +399,53 @@ const ProfilePage = () => {
     );
   }
 
+  const handleIdentityUpdate = async (e) => {
+    if (e) e.preventDefault();
+    
+    if (containsEmoji(identityData.displayName)) {
+      alert("O Nome de Exibição não pode conter emojis.");
+      return;
+    }
+
+    if (!isValidPersonalName(identityData.personalName)) {
+      alert("O Nome Pessoal deve conter apenas letras e espaços.");
+      return;
+    }
+
+    setIsUpdatingIdentity(true);
+    try {
+      const updatedUser = await userService.updateProfile(identityData);
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setShowIdentityModal(false);
+    } catch (err) {
+      console.error('Failed to update identity:', err);
+      alert(err.response?.data?.detalhe || 'Falha ao atualizar perfil.');
+    } finally {
+      setIsUpdatingIdentity(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (user) {
+      setIdentityData({
+        displayName: user.displayName || '',
+        personalName: user.personalName || ''
+      });
+    }
+  }, [user]);
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-0 space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-32 md:pb-8">
       <header className="flex flex-col md:flex-row items-center gap-6 md:gap-8 bg-(--bg-card) p-6 md:p-10 rounded-3xl md:rounded-[40px] border border-(--border-subtle) relative overflow-hidden group shadow-2xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-brand/10 rounded-full blur-[100px] -mr-40 -mt-40 transition-all duration-1000 group-hover:bg-brand/20 animate-pulse" />
-        
+        <button 
+          onClick={() => setShowIdentityModal(true)}
+          className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-brand/5 rounded-2xl text-dim hover:text-brand-legible hover:bg-brand/10 hover:scale-105 active:scale-95 transition-all outline outline-transparent hover:outline-brand/20 shadow-lg z-20 group/edit"
+          title="Editar Nome do Perfil"
+        >
+          <Settings2 size={18} className="group-hover/edit:rotate-45 transition-transform" />
+        </button>
         <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="w-32 h-32 bg-linear-to-br from-brand via-purple-600 to-indigo-700 rounded-[32px] flex items-center justify-center text-5xl font-black text-brand-contrast shadow-2xl overflow-hidden group/avatar">
             {user?.fotoPerfil ? (
@@ -412,26 +465,33 @@ const ProfilePage = () => {
           </Button>
         </div>
 
-        <div className="text-center md:text-left space-y-3 relative z-10 flex-1">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex items-center justify-center md:justify-start gap-3">
-              <h2 className="text-3xl font-bold text-main tracking-tight">{user?.nomeCompleto}</h2>
-              <ShieldCheck className="text-brand w-6 h-6" />
-            </div>
-          </div>
-
-          <p className="text-dim font-medium text-sm">@{user?.email?.split('@')[0]}</p>
-          
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4">
-            <span className="px-4 py-1.5 bg-brand/10 text-brand text-[10px] font-bold uppercase tracking-wider rounded-full border border-brand/20">
-              Membro Prime
-            </span>
-            <span className="text-dim text-[10px] uppercase font-bold tracking-widest flex items-center gap-2">
-              <Calendar size={12} className="text-brand/50" />
-              Membro desde {formattedJoinDate}
-            </span>
-          </div>
-        </div>
+        <div className="flex-1 min-w-0 text-center md:text-left">
+                  <div className="flex flex-col gap-1 mb-3">
+                    <div className="flex flex-col gap-2">
+                      <h1 className="text-4xl md:text-5xl font-black text-main tracking-tight leading-none group-hover:text-brand transition-colors">
+                        {user?.displayName || 'Usuário'}
+                      </h1>
+                      {user?.showPersonalName && user?.personalName && (
+                        <span className="text-lg md:text-xl font-medium text-dim/60 italic truncate">
+                          {user.personalName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-dim/60 overflow-hidden">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Calendar size={14} className="shrink-0" />
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Membro desde {new Date(user?.dataCriacao).getFullYear()}</span>
+                    </div>
+                    {user?.papel === 'ADMIN' && (
+                       <div className="flex items-center gap-1.5 px-2 py-0.5 bg-brand/10 text-brand rounded-full border border-brand/20">
+                        <ShieldCheck size={12} className="shrink-0" />
+                        <span className="text-[9px] font-black uppercase tracking-tighter">Administrador</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
         {/* Seção de Status de Música (Favorita + Spotify) */}
         <motion.div 
@@ -661,6 +721,14 @@ const ProfilePage = () => {
               Minha Conta
             </h3>
             <div className="space-y-4">
+              {user?.username && (
+                <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between group">
+                  <div>
+                    <p className="text-[10px] text-dim/60 uppercase font-black tracking-widest mb-1">Meu user</p>
+                    <p className="text-main font-bold text-sm">@{user.username}</p>
+                  </div>
+                </div>
+              )}
               <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between group">
                 <div>
                   <p className="text-[10px] text-dim/60 uppercase font-black tracking-widest mb-1">E-mail Principal</p>
@@ -678,12 +746,11 @@ const ProfilePage = () => {
             </div>
           </div>
 
-
           <Button 
             variant="danger"
             onClick={() => setShowLogoutConfirm(true)}
             icon={LogOut}
-            className="mt-8 py-4 text-sm font-bold"
+            className="mt-8 py-4 text-sm font-bold w-full"
           >
             Finalizar Sessão
           </Button>
@@ -800,6 +867,41 @@ const ProfilePage = () => {
           />
           <Button type="submit" className="w-full py-4 mt-2">
             Salvar Links
+          </Button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showIdentityModal}
+        onClose={() => setShowIdentityModal(false)}
+        title="Identidade do Perfil"
+      >
+        <form onSubmit={handleIdentityUpdate} className="space-y-6">
+          <p className="text-dim text-sm -mt-4 mb-6">Customize como as pessoas te veem na plataforma.</p>
+
+          <Input 
+            label="Nick de Exibição"
+            value={identityData.displayName}
+            onChange={(e) => setIdentityData({...identityData, displayName: e.target.value})}
+            placeholder="Ex: joaopaulodev, João_123"
+            icon={UserIcon}
+            helperText="Nome principal do seu perfil. Pode conter números e símbolos. Emojis não são permitidos."
+          />
+
+          <Input 
+            value={identityData.personalName}
+            onChange={(e) => setIdentityData({...identityData, personalName: e.target.value})}
+            label="Nome Pessoal"
+            placeholder="Ex: João Paulo"
+            helperText="Seu nome real. Deixe em branco caso queira se manter totalmente anônimo. Caso preenchido, deve conter apenas letras."
+          />
+
+          <Button 
+            type="submit" 
+            className="w-full py-4 mt-4 text-sm font-bold uppercase tracking-widest"
+            isLoading={isUpdatingIdentity}
+          >
+            {isUpdatingIdentity ? 'Salvando Identidade...' : 'Confirmar Identidade'}
           </Button>
         </form>
       </Modal>

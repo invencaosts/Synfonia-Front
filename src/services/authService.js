@@ -4,8 +4,8 @@ import { spotifyService } from './spotifyService';
 export const authService = {
   login: async (email, senha) => {
     const response = await api.post('/auth/login', { email, senha });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
+    // O token agora é armazenado via Cookie HttpOnly gerenciado pelo browser
+    if (response.data.usuario) {
       localStorage.setItem('user', JSON.stringify(response.data.usuario));
     }
     return response.data;
@@ -16,14 +16,19 @@ export const authService = {
     return response.data;
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error('Falha ao deslogar no servidor:', err);
+    }
+
     spotifyService.logout();
 
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('isGuest');
     
-    // Theme and Appearance
+    // Theme and Appearance (mantemos se o usuário quiser, mas o padrão é limpar no logout)
     localStorage.removeItem('synfonia-theme');
     localStorage.removeItem('synfonia-accent');
     localStorage.removeItem('synfonia-song-color');
@@ -43,7 +48,6 @@ export const authService = {
 
   enterAsGuest: () => {
     localStorage.setItem('isGuest', 'true');
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
 
@@ -53,27 +57,44 @@ export const authService = {
 
   getCurrentUser: () => {
     if (localStorage.getItem('isGuest') === 'true') {
-      return { nomeCompleto: 'Convidado', guest: true };
+      return { displayName: 'Convidado', guest: true };
     }
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   },
 
   isAuthenticated: () => {
-    return !!localStorage.getItem('token') || localStorage.getItem('isGuest') === 'true';
+    // Como o token está no cookie HttpOnly, o Front-end não "vê" o token.
+    // Usamos a presença do objeto 'user' no localStorage ou uma flag como indicador inicial
+    return !!localStorage.getItem('user') || localStorage.getItem('isGuest') === 'true';
   },
 
-  validateToken: async () => {
-    const token = localStorage.getItem('token');
+  validateSession: async () => {
     const isGuest = localStorage.getItem('isGuest') === 'true';
-    
-    if (!token || isGuest) return;
+    if (isGuest) return;
 
     try {
-      await api.get('/users/me');
+      // Chama o endpoint /me para validar se o cookie da sessão ainda é válido
+      const response = await api.get('/auth/me');
+      localStorage.setItem('user', JSON.stringify(response.data));
+      return response.data;
     } catch (err) {
-      // O interceptor em api.js já cuida do logout em caso de 401
-      console.error('Token validation failed:', err);
+      // Se falhar (401), o interceptor em api.js já cuida do redirecionamento
+      console.error('Sessão inválida:', err);
+      localStorage.removeItem('user');
+      throw err;
     }
+  },
+
+  forgotPassword: async (email) => {
+    return await api.post('/auth/forgot-password', { email });
+  },
+
+  verifyResetCode: async (email, code) => {
+    return await api.post('/auth/verify-reset-code', { email, code });
+  },
+
+  resetPassword: async (email, code, newPassword) => {
+    return await api.post('/auth/reset-password', { email, token: code, newPassword });
   }
 };

@@ -6,6 +6,7 @@ const AuthLayout = () => {
   const location = useLocation();
   const outlet = useOutlet();
   const isLogin = location.pathname === '/login';
+  const isRecovery = location.pathname === '/forgot-password' || location.pathname === '/reset-password';
   const [direction, setDirection] = useState(0);
 
   useEffect(() => {
@@ -82,7 +83,9 @@ const AuthLayout = () => {
                 }}
                 transition={{ duration: 0.3 }}
               />
-              <span className={`relative z-10 transition-opacity duration-300 ${!isLogin ? 'opacity-100' : 'opacity-40'}`}>Registrar</span>
+              <span className={`relative z-10 transition-opacity duration-300 ${!isLogin ? 'opacity-100' : 'opacity-40'}`}>
+                {isRecovery ? 'Recuperação' : 'Registrar'}
+              </span>
             </Link>
           </motion.div>
         </div>
