@@ -71,6 +71,7 @@ const ProfilePage = () => {
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [isUpdatingIdentity, setIsUpdatingIdentity] = useState(false);
   const [identityData, setIdentityData] = useState({
+    username: '',
     displayName: '',
     personalName: ''
   });
@@ -431,6 +432,7 @@ const ProfilePage = () => {
   React.useEffect(() => {
     if (user) {
       setIdentityData({
+        username: user.username || '',
         displayName: user.displayName || '',
         personalName: user.personalName || ''
       });
@@ -885,16 +887,27 @@ const ProfilePage = () => {
             label="Nick de Exibição"
             value={identityData.displayName}
             onChange={(e) => setIdentityData({...identityData, displayName: e.target.value})}
-            placeholder="Ex: joaopaulodev, João_123"
+            placeholder="Ex: NoobMaster69"
             icon={UserIcon}
             helperText="Nome principal do seu perfil. Pode conter números e símbolos. Emojis não são permitidos."
           />
+
+          {!user?.usernameChanged && (
+            <Input 
+              label="@ Nome de Usuário (Único)"
+              value={identityData.username}
+              onChange={(e) => setIdentityData({...identityData, username: e.target.value.toLowerCase().trim()})}
+              placeholder="Ex: joao_silva"
+              icon={ShieldCheck}
+              helperText="⚠️ ATENÇÃO: Seus amigos te acharão por este @. Esta mudança é PERMANENTE e só pode ser feita UMA VEZ."
+            />
+          )}
 
           <Input 
             value={identityData.personalName}
             onChange={(e) => setIdentityData({...identityData, personalName: e.target.value})}
             label="Nome Pessoal"
-            placeholder="Ex: João Paulo"
+            placeholder="Ex: Carlos Andrade"
             helperText="Seu nome real. Deixe em branco caso queira se manter totalmente anônimo. Caso preenchido, deve conter apenas letras."
           />
 
