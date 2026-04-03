@@ -132,7 +132,6 @@ const ProfilePage = () => {
           if (!isFavoritesLoaded) {
             await refreshFavorites();
           }
-          setSongCount(favorites?.length || 0);
 
           // Buscar playlists públicas (essa chamada é leve)
           const userPlaylists = await playlistService.getPublicByUserId(user.id);
@@ -144,12 +143,15 @@ const ProfilePage = () => {
     };
     fetchStats();
 
-
-
     return () => {
       window.removeEventListener('userUpdate', handleUserUpdate);
     };
-  }, [user?.id, isGuest]);
+  }, [user?.id, isGuest, isFavoritesLoaded]);
+
+  // Sincroniza o contador de músicas reativamente com o contexto global
+  React.useEffect(() => {
+    setSongCount(favorites?.length || 0);
+  }, [favorites]);
 
   // Autoplay da música favorita no perfil usando o contexto global
   React.useEffect(() => {

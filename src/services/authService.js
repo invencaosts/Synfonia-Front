@@ -17,31 +17,32 @@ export const authService = {
   },
 
   logout: async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch (err) {
-      console.error('Falha ao deslogar no servidor:', err);
-    }
-
-    spotifyService.logout();
-
+    // 1. Limpeza IMEDIATA do estado local para UX instantânea
     localStorage.removeItem('user');
     localStorage.removeItem('isGuest');
-    
-    // Theme and Appearance (mantemos se o usuário quiser, mas o padrão é limpar no logout)
     localStorage.removeItem('synfonia-theme');
     localStorage.removeItem('synfonia-accent');
     localStorage.removeItem('synfonia-song-color');
     localStorage.removeItem('synfonia-font-size');
     localStorage.removeItem('synfonia-reduce-motion');
-
-    // Autoplay preferences
     localStorage.removeItem('synfonia-autoplay');
     localStorage.removeItem('synfonia-favorite-autoplay');
     localStorage.removeItem('synfonia-favorite-volume');
     localStorage.removeItem('synfonia-volume');
-
     localStorage.removeItem('synfonia_local_history');
+
+    // 2. Notifica o sistema ou redireciona imediatamente se necessário
+    // (Opcional) window.dispatchEvent(new Event('userUpdate'));
+
+    // 3. Logout no Spotify
+    spotifyService.logout();
+
+    // 4. Logout no servidor (não bloqueia a limpeza local)
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error('Falha ao deslogar no servidor (sessão pode já ter expirado):', err);
+    }
 
     window.location.href = '/login';
   },
