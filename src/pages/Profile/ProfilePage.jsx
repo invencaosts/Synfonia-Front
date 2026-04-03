@@ -73,7 +73,9 @@ const ProfilePage = () => {
   const [identityData, setIdentityData] = useState({
     username: '',
     displayName: '',
-    personalName: ''
+    personalName: '',
+    showPersonalName: true,
+    showSpotifyActivity: true
   });
   const [copied, setCopied] = React.useState(false);
   const [songCount, setSongCount] = React.useState(0);
@@ -434,7 +436,9 @@ const ProfilePage = () => {
       setIdentityData({
         username: user.username || '',
         displayName: user.displayName || '',
-        personalName: user.personalName || ''
+        personalName: user.personalName || '',
+        showPersonalName: user.showPersonalName ?? true,
+        showSpotifyActivity: user.showSpotifyActivity ?? true
       });
     }
   }, [user]);
@@ -567,7 +571,7 @@ const ProfilePage = () => {
 
           {/* Ouvindo Agora (Real-time Spotify) */}
           <AnimatePresence mode="popLayout">
-            {spotifyNowPlaying && spotifyNowPlaying.isPlaying && (
+            {user?.showSpotifyActivity && spotifyNowPlaying && spotifyNowPlaying.isPlaying && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -911,12 +915,45 @@ const ProfilePage = () => {
             helperText="Seu nome real. Deixe em branco caso queira se manter totalmente anônimo. Caso preenchido, deve conter apenas letras."
           />
 
+          <div className="flex flex-col gap-4 p-4 bg-brand/5 rounded-2xl border border-brand/10">
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-main">Exibir Nome Pessoal</span>
+                <span className="text-[10px] text-dim/60 uppercase font-bold">Mostrar seu nome real abaixo do nick</span>
+              </div>
+              <input 
+                type="checkbox"
+                checked={identityData.showPersonalName}
+                onChange={(e) => setIdentityData({...identityData, showPersonalName: e.target.checked})}
+                className="w-10 h-6 bg-brand/20 rounded-full appearance-none relative cursor-pointer outline-none transition-all checked:bg-brand after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:w-4 after:h-4 after:rounded-full after:transition-all checked:after:translate-x-4"
+              />
+            </label>
+
+            <div className="h-px bg-brand/5" />
+
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-main flex items-center gap-2">
+                  Exibir Atividade do Spotify
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                </span>
+                <span className="text-[10px] text-dim/60 uppercase font-bold">Ocultar o que você está ouvindo agora</span>
+              </div>
+              <input 
+                type="checkbox"
+                checked={identityData.showSpotifyActivity}
+                onChange={(e) => setIdentityData({...identityData, showSpotifyActivity: e.target.checked})}
+                className="w-10 h-6 bg-brand/20 rounded-full appearance-none relative cursor-pointer outline-none transition-all checked:bg-green-500 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:w-4 after:h-4 after:rounded-full after:transition-all checked:after:translate-x-4"
+              />
+            </label>
+          </div>
+
           <Button 
             type="submit" 
-            className="w-full py-4 mt-4 text-sm font-bold uppercase tracking-widest"
+            className="w-full py-4 mt-6 text-sm font-bold uppercase tracking-widest bg-brand!"
             isLoading={isUpdatingIdentity}
           >
-            {isUpdatingIdentity ? 'Salvando Identidade...' : 'Confirmar Identidade'}
+            {isUpdatingIdentity ? 'Salvando Identidade...' : 'Salvar Alterações'}
           </Button>
         </form>
       </Modal>
