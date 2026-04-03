@@ -74,7 +74,7 @@ const LibraryPage = () => {
         for (const item of tracks) {
           const t = item.track;
           if (t && !existingIds.has(t.id)) {
-            await musicService.saveToCollection(user.id, {
+            await musicService.saveToCollection({
               trackId: String(t.id),
               nome: t.name,
               artista: t.artists[0]?.name,
@@ -108,7 +108,7 @@ const LibraryPage = () => {
     setIsSyncing(true);
     setShowClearSpotifyConfirm(false);
     try {
-      const deletedCount = await musicService.deleteBySource(user.id, 'SPOTIFY');
+      const deletedCount = await musicService.deleteBySource('SPOTIFY');
       await refreshFavorites(true);
       setMessage({ type: 'success', text: `${deletedCount} músicas removidas.` });
     } catch (err) {

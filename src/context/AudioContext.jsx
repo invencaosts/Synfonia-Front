@@ -166,7 +166,7 @@ export const AudioProvider = ({ children }) => {
 
     setIsRefreshingFavorites(true);
     try {
-      const data = await musicService.getCollection(user.id);
+      const data = await musicService.getCollection();
       const collection = Array.isArray(data) ? data : [];
       setFavorites(collection);
       
@@ -213,7 +213,7 @@ export const AudioProvider = ({ children }) => {
         );
         const idToDelete = record ? record.id : trackId;
         
-        await musicService.removeFromCollection(user.id, idToDelete);
+        await musicService.removeFromCollection(idToDelete);
         
         // Update Local State
         setFavorites(prev => prev.filter(f => f.id !== idToDelete && 
@@ -235,7 +235,7 @@ export const AudioProvider = ({ children }) => {
           source: (track.isSpotify || track.source === "SPOTIFY" || (track.uri && track.uri.includes('spotify'))) ? "SPOTIFY" : "ITUNES"
         };
         
-        const responseRecord = await musicService.saveToCollection(user.id, musicData);
+        const responseRecord = await musicService.saveToCollection(musicData);
         
         // Ensure newRecord has the structure { id, dataAdicao, music: { ... } }
         // If responseRecord.music is missing, we use the original track data

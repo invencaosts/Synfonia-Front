@@ -201,7 +201,7 @@ const DashboardPage = () => {
         source: track.source || (track.isSpotify ? 'SPOTIFY' : 'ITUNES')
       };
 
-      await musicService.saveToCollection(user.id, musicData);
+      await musicService.saveToCollection(musicData);
       
       setAddedIds(prev => {
         const next = new Set(prev);
