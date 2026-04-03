@@ -16,12 +16,11 @@ import { useTheme } from '../../context/ThemeContext';
 const LibraryPage = () => {
   const {
     playTrack, currentTrack, isPlaying, addToQueue,
-    playNext, playPlaylist, spotifyToken, isSpotifySyncEnabled
+    playNext, playPlaylist, spotifyToken, isSpotifySyncEnabled,
+    favorites, isFavoritesLoaded, refreshFavorites, toggleFavorite
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
   
-  const [collection, setCollection] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirm, setShowConfirm] = useState(null);
   const [message, setMessage] = useState(null);
@@ -41,30 +40,18 @@ const LibraryPage = () => {
   const user = authService.getCurrentUser();
 
   const hasSpotifyTracks = useMemo(() => {
-     return collection.some(item => 
+     return favorites.some(item => 
        item.music?.source === 'SPOTIFY' || 
        (item.music?.uri && item.music.uri.includes('spotify')) ||
        item.music?.isSpotify === true
      );
-  }, [collection]);
-
-  const fetchCollection = async () => {
-    if (!user || authService.isGuest()) return;
-    setLoading(true);
-    try {
-      const data = await musicService.getCollection(user.id);
-      setCollection(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching collection:", err);
-      setMessage({ type: 'error', text: 'Erro ao carregar sua biblioteca.' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [favorites]);
 
   useEffect(() => {
-    fetchCollection();
-  }, []);
+    if (!isFavoritesLoaded) {
+      refreshFavorites();
+    }
+  }, [isFavoritesLoaded, refreshFavorites]);
 
   const handleImportSpotify = async () => {
     if (!spotifyToken || isSyncing) return;
@@ -75,7 +62,7 @@ const LibraryPage = () => {
       // Lógica simplificada de importação local
       let offset = 0;
       let hasMore = true;
-      const existingIds = new Set(collection.map(item => item.music?.trackId || item.music?.id));
+      const existingIds = new Set(favorites.map(item => item.music?.trackId || item.music?.id));
 
       while (hasMore) {
         const data = await spotifyService.getSavedTracks(spotifyToken, 50, offset);
@@ -105,7 +92,7 @@ const LibraryPage = () => {
         await new Promise(r => setTimeout(r, 100));
       }
 
-      await fetchCollection();
+      await refreshFavorites(true);
       setMessage({ type: 'success', text: 'Importação concluída com sucesso!' });
     } catch (err) {
       console.error("Import error:", err);
@@ -122,7 +109,7 @@ const LibraryPage = () => {
     setShowClearSpotifyConfirm(false);
     try {
       const deletedCount = await musicService.deleteBySource(user.id, 'SPOTIFY');
-      await fetchCollection();
+      await refreshFavorites(true);
       setMessage({ type: 'success', text: `${deletedCount} músicas removidas.` });
     } catch (err) {
       console.error("Clear error:", err);
@@ -132,12 +119,11 @@ const LibraryPage = () => {
     }
   };
 
-  const removeMusic = async (recordId) => {
-    if (!user || !recordId) return;
-    setDeletingId(recordId);
+  const removeMusic = async (record) => {
+    if (!user || !record || !record.music) return;
+    setDeletingId(record.id || record.music.id);
     try {
-      await musicService.removeFromCollection(user.id, recordId);
-      setCollection(prev => prev.filter(item => item.id !== recordId && (item.music?.id !== recordId && item.music?.trackId !== recordId)));
+      await toggleFavorite(record.music);
       setMessage({ type: 'success', text: 'Música removida.' });
     } catch (err) {
       console.error('Delete error:', err);
@@ -166,7 +152,7 @@ const LibraryPage = () => {
 
   // Lógica de ordenação robusta e filtragem condicional
   const sortedCollection = useMemo(() => {
-    const safeBase = Array.isArray(collection) ? [...collection] : [];
+    const safeBase = Array.isArray(favorites) ? [...favorites] : [];
 
     // Filtro inicial para remover itens nulos ou sem música
     let filtered = safeBase.filter(item => item && item.music);
@@ -229,7 +215,7 @@ const LibraryPage = () => {
       
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [collection, sortBy, sortOrder, isSpotifySyncEnabled, spotifyToken, hideSpotify, searchTerm]);
+  }, [favorites, sortBy, sortOrder, isSpotifySyncEnabled, spotifyToken, hideSpotify, searchTerm]);
 
   // Paginação segura
   const totalPages = Math.max(1, Math.ceil(sortedCollection.length / itemsPerPage));
@@ -252,7 +238,9 @@ const LibraryPage = () => {
     { value: 'album', label: 'Álbum' },
   ];
 
-  if (loading) {
+  const isGuest = authService.isGuest();
+
+  if (!isFavoritesLoaded && !isGuest) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4">
         <Loader2 className="w-12 h-12 text-brand animate-spin" />
@@ -260,8 +248,6 @@ const LibraryPage = () => {
       </div>
     );
   }
-
-  const isGuest = authService.isGuest();
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 relative min-h-screen pb-32 md:pb-8">
@@ -278,7 +264,7 @@ const LibraryPage = () => {
         {!isGuest && (
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             {/* Controles de Sincronização */}
-            {(spotifyToken || collection.some(item => item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify')))) && (
+            {(spotifyToken || favorites.some(item => item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify')))) && (
               <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
                 {spotifyToken && !hasSpotifyTracks && (
                   <>
@@ -308,7 +294,7 @@ const LibraryPage = () => {
 
 
 
-            {collection.length > 0 && (
+            {favorites.length > 0 && (
               <button
                 onClick={() => playPlaylist(playlist, { shuffle: true })}
                 className="flex items-center gap-2 px-6 py-2.5 bg-brand text-brand-contrast rounded-xl font-bold hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95"
@@ -425,13 +411,19 @@ const LibraryPage = () => {
             </div>
           )}
 
-          {collection.length > 0 ? (
+          {favorites.length > 0 ? (
             <div className="space-y-6 md:space-y-8">
               {sortedCollection.length > 0 ? (
               <>{viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                  <AnimatePresence mode="popLayout">
                   {paginatedCollection.map((item) => (
-                    <div
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
                       key={item.id}
                       className={`glass-card rounded-xl md:rounded-2xl p-3 md:p-4 group transition-all duration-500 hover:scale-[1.02] hover:bg-white/6 border-2 flex flex-col h-full ${currentTrack?.id === item.music?.id
                           ? 'ring-4 ring-brand/20 shadow-[0_0_40px_rgba(var(--brand-rgb),0.3)] scale-[1.02]'
@@ -554,13 +546,20 @@ const LibraryPage = () => {
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
+                  <AnimatePresence mode="popLayout">
                   {paginatedCollection.map((item) => (
-                    <div
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
                       key={item.id}
                       className={`music-list-item group transition-all duration-500 border-2 ${currentTrack?.id === item.music?.id
                           ? 'shadow-[0_0_30px_rgba(var(--brand-rgb),0.2)] ring-1 ring-brand/30 translate-x-2'
@@ -658,8 +657,9 @@ const LibraryPage = () => {
                           <Trash2 size={18} />
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
+                  </AnimatePresence>
                 </div>
               )}
 
@@ -785,7 +785,7 @@ const LibraryPage = () => {
 
                 <div className="flex flex-col w-full gap-3 pt-4">
                   <button
-                    onClick={() => removeMusic(showConfirm.music?.id)}
+                    onClick={() => removeMusic(showConfirm)}
                     disabled={deletingId === showConfirm.music?.id}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center"
                   >

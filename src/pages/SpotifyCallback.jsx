@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { spotifyService } from '../services/spotifyService';
 import { useAudio } from '../hooks/useAudio';
+import { userService } from '../services/userService';
 
 const SpotifyCallback = () => {
   const navigate = useNavigate();
@@ -30,6 +31,13 @@ const SpotifyCallback = () => {
               };
               localStorage.setItem('user', JSON.stringify(user));
               window.dispatchEvent(new Event('userUpdate'));
+              
+              // Persiste a mudança no backend para não sumir ao deslogar/recarregar
+              try {
+                await userService.updateProfile({ socialLinks: user.socialLinks });
+              } catch (backendErr) {
+                console.error("Erro ao persistir link do Spotify no backend:", backendErr);
+              }
             }
           }
         } catch (err) {

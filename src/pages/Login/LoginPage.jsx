@@ -133,6 +133,15 @@ const LoginPage = () => {
           }
         />
 
+        <div className="flex justify-end pr-1">
+          <Link 
+            to="/forgot-password" 
+            className="text-[10px] font-semibold text-dim hover:text-brand transition-colors uppercase tracking-widest"
+          >
+            Esqueci minha senha?
+          </Link>
+        </div>
+
         <Button
           type="submit"
           loading={loading}

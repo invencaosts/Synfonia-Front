@@ -291,9 +291,9 @@ const AudioPlayer = () => {
                       e.stopPropagation();
                       toggleFavorite(currentTrack);
                     }}
-                    className={`p-2 transition-all active:scale-90 ${safeFavoriteIds.has(currentTrack.trackId || currentTrack.id) ? 'text-brand' : 'text-dim'}`}
+                    className={`p-2 transition-all active:scale-90 ${safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? 'text-brand' : 'text-dim'}`}
                   >
-                    <Heart size={32} fill={safeFavoriteIds.has(currentTrack.trackId || currentTrack.id) ? "currentColor" : "none"} />
+                    <Heart size={32} fill={safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? "currentColor" : "none"} />
                   </button>
                   <button
                     onClick={(e) => {
@@ -314,10 +314,10 @@ const AudioPlayer = () => {
                   e.stopPropagation();
                   toggleFavorite(currentTrack);
                 }}
-                className={`p-2 transition-all active:scale-90 ${safeFavoriteIds.has(currentTrack.trackId || currentTrack.id) ? 'text-brand' : 'text-dim hover:text-main'}`}
-                title={safeFavoriteIds.has(currentTrack.trackId || currentTrack.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                className={`p-2 transition-all active:scale-90 ${safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? 'text-brand' : 'text-dim hover:text-main'}`}
+                title={safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               >
-                <Heart size={20} fill={safeFavoriteIds.has(currentTrack.trackId || currentTrack.id) ? "currentColor" : "none"} strokeWidth={2} />
+                <Heart size={20} fill={safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? "currentColor" : "none"} strokeWidth={2} />
               </button>
             )}
           </div>
