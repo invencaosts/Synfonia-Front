@@ -3,9 +3,6 @@ import api from './api';
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || 'http://localhost:5173/callback';
 
-console.log("[Spotify Config] Client ID em uso:", CLIENT_ID);
-console.log("[Spotify Config] Redirect URI em uso:", REDIRECT_URI);
-
 const SCOPES = [
   'streaming',
   'user-read-email',
@@ -34,10 +31,7 @@ export const spotifyService = {
     if (code) {
       try {
         // Chamamos o NOSSO backend para trocar o código pelo token (mais seguro)
-        console.log(`[Spotify Auth] Solicitando troca de código ao Backend...`);
         const response = await api.get(`/spotify/callback?code=${code}`);
-        
-        console.log("[Spotify Auth] Resposta do Backend:", response.data);
         const { access_token, expires_in } = response.data;
 
         if (access_token) {
@@ -245,12 +239,7 @@ export const spotifyService = {
 
   getPlaylist: async (token, playlistId) => {
     const pId = String(playlistId || '').trim();
-    if (!token || !pId) {
-      console.warn("[Spotify Debug] Token ou PlaylistID faltando:", { token: !!token, pId });
-      return null;
-    }
     const url = `https://api.spotify.com/v1/playlists/${pId}`;
-    console.log(`[Spotify Debug] Chamando endpoint: ${url}`);
     
     try {
       const response = await fetch(url, {
@@ -279,7 +268,6 @@ export const spotifyService = {
       }
 
       const url = `https://api.spotify.com/v1/playlists/${pId}/items?limit=${limit}&offset=${offset}`;
-      console.log(`[Spotify Fetch] Buscando itens via: ${url}`);
       try {
         const response = await fetch(url, {
           headers: {
@@ -359,7 +347,6 @@ export const spotifyService = {
     try {
       const userProfile = await spotifyService.getUserProfile(token);
       const userId = userProfile?.id;
-      console.log(`[Export Service] Iniciando exportação para usuário: ${userId || 'Desconhecido'}`);
 
       const createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
         method: 'POST',
@@ -381,7 +368,6 @@ export const spotifyService = {
       }
       const spotifyPlaylist = await createRes.json();
       const playlistId = spotifyPlaylist.id;
-      console.log(`[Export Service] Playlist criada com ID: ${playlistId}. Aguardando propagação...`);
 
       const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
