@@ -17,11 +17,18 @@ export const AudioProvider = ({ children }) => {
 
   // Atualizar offset do player para modais e outros elementos UI
   useEffect(() => {
-    if (currentTrack) {
-      document.documentElement.style.setProperty('--player-offset', '100px');
-    } else {
-      document.documentElement.style.setProperty('--player-offset', '0px');
-    }
+    const updateOffset = () => {
+      const isMobile = window.innerWidth < 768;
+      if (currentTrack) {
+        document.documentElement.style.setProperty('--player-offset', isMobile ? '160px' : '100px');
+      } else {
+        document.documentElement.style.setProperty('--player-offset', isMobile ? '80px' : '0px');
+      }
+    };
+
+    updateOffset();
+    window.addEventListener('resize', updateOffset);
+    return () => window.removeEventListener('resize', updateOffset);
   }, [currentTrack]);
 
   const [spotifyToken, setSpotifyToken] = useState(spotifyService.getAccessToken());

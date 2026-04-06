@@ -28,8 +28,6 @@ const PlaylistsPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [spotifyPlaylists, setSpotifyPlaylists] = useState([]);
   const [loadingSpotify, setLoadingSpotify] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, name: '' });
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedForExport, setSelectedForExport] = useState([]);
   const [newPlaylist, setNewPlaylist] = useState({
