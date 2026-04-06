@@ -226,8 +226,8 @@ const MainLayout = () => {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed right-4 md:right-8 z-50 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 min-w-[280px] max-w-sm transition-[bottom] duration-500 ease-in-out"
-            style={{ bottom: 'calc(var(--player-offset, 0px) + 20px)' }}
+            className="fixed right-4 md:right-8 z-100 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 min-w-[280px] max-w-sm transition-[bottom] duration-500 ease-in-out"
+            style={{ bottom: 'calc(var(--player-offset, 0px) + 24px)' }}
           >
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${importProgress.status === 'completed' ? 'bg-green-500/20 text-green-500' :
               importProgress.status === 'error' ? 'bg-red-500/20 text-red-500' :
@@ -276,8 +276,8 @@ const MainLayout = () => {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed right-4 md:right-8 z-50 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 min-w-[280px] max-w-sm transition-[bottom] duration-500 ease-in-out"
-            style={{ bottom: 'calc(var(--player-offset, 0px) + 35px)' }}
+            className="fixed right-4 md:right-8 z-100 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 min-w-[280px] max-w-sm transition-[bottom] duration-500 ease-in-out"
+            style={{ bottom: 'calc(var(--player-offset, 0px) + 40px)' }}
           >
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${exportProgress.status === 'completed' ? 'bg-green-500/20 text-green-500' : 'bg-brand/20 text-brand'
               }`}>

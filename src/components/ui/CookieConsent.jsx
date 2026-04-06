@@ -27,7 +27,7 @@ const CookieConsent = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
                     transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    className="fixed z-[9999] bottom-0 left-0 w-full p-4 md:bottom-6 md:left-auto md:right-6 md:w-auto md:max-w-md"
+                    className="fixed z-9999 bottom-0 left-0 w-full p-4 md:bottom-6 md:left-auto md:right-6 md:w-auto md:max-w-md"
                 >
                     <div className="glass-panel p-5 rounded-2xl md:rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-start gap-4">
                         <div className="w-10 h-10 bg-brand/20 rounded-xl flex items-center justify-center text-brand shrink-0">
