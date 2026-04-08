@@ -13,9 +13,16 @@ export const musicService = {
     return response.data;
   },
 
-  getCollection: async () => {
-    const response = await api.get('/users/me/songs');
-    return response.data;
+  getCollection: async (page = 0, size = 50, sort = 'trackName,asc', query = '') => {
+    const response = await api.get('/users/me/songs', {
+      params: { page, size, sort, q: query }
+    });
+    return response.data; // Agora retorna um objeto Page (com content, totalPages, etc)
+  },
+
+  getFavoriteIds: async () => {
+    const response = await api.get('/users/me/songs/ids');
+    return response.data; // Lista simples de strings
   },
 
   removeFromCollection: async (trackId) => {

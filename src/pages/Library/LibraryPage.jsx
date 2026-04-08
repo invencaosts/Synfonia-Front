@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, Trash2, Clock, Heart,
@@ -12,6 +12,7 @@ import { authService } from '../../services/authService';
 import { spotifyService } from '../../services/spotifyService';
 import { useAudio } from '../../hooks/useAudio';
 import { useTheme } from '../../context/ThemeContext';
+import { useImport } from '../../context/ImportContext';
 
 const LibraryPage = () => {
   const {
@@ -20,96 +21,118 @@ const LibraryPage = () => {
     favorites, isFavoritesLoaded, refreshFavorites, toggleFavorite
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
+  const { isImporting, importSavedTracks } = useImport();
   
+  const [backendSongs, setBackendSongs] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirm, setShowConfirm] = useState(null);
   const [message, setMessage] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
   const [showClearSpotifyConfirm, setShowClearSpotifyConfirm] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState({ total: 0, current: 0 });
 
-  const [sortBy, setSortBy] = useState('recent');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [hideSpotify, setHideSpotify] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounce para a busca (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const itemsPerPage = 50;
   const user = authService.getCurrentUser();
+  const userId = user?.id;
 
   const hasSpotifyTracks = useMemo(() => {
-     return favorites.some(item => 
+     return backendSongs.some(item => 
        item.music?.source === 'SPOTIFY' || 
        (item.music?.uri && item.music.uri.includes('spotify')) ||
        item.music?.isSpotify === true
      );
-  }, [favorites]);
+  }, [backendSongs]);
+
+  // Busca PAGINADA do servidor
+  const fetchLibraryPage = useCallback(async (pageIndex) => {
+    if (!userId) return;
+    
+    setIsLoading(true);
+    try {
+      // Map frontend sortBy to backend document fields
+      const sortFieldMap = {
+        'recent': 'dataAdicao',
+        'name': 'trackName',
+        'artist': 'artistName',
+        'album': 'albumName'
+      };
+      
+      const sortField = sortFieldMap[sortBy] || 'dataAdicao';
+      const sortParam = `${sortField},${sortOrder}`;
+      
+      const data = await musicService.getCollection(pageIndex, itemsPerPage, sortParam, debouncedSearchTerm);
+      setBackendSongs(data.content || []);
+      
+      // Suporte para nova serialização do Spring Data 3.3+ (VIA_DTO)
+      if (data.page) {
+        setTotalPages(data.page.totalPages || 1);
+        setTotalElements(data.page.totalElements || 0);
+      } else {
+        setTotalPages(data.totalPages || 1);
+        setTotalElements(data.totalElements || 0);
+      }
+    } catch (err) {
+      console.error("Library: Erro ao carregar página da biblioteca:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, sortBy, sortOrder, debouncedSearchTerm]);
 
   useEffect(() => {
-    if (!isFavoritesLoaded) {
+    fetchLibraryPage(currentPage - 1);
+  }, [currentPage, fetchLibraryPage, debouncedSearchTerm]);
+
+  // Recarregar IDs globais caso necessário (para o coração vermelho)
+  useEffect(() => {
+    if (!isFavoritesLoaded && userId) {
       refreshFavorites();
     }
-  }, [isFavoritesLoaded, refreshFavorites]);
+  }, [isFavoritesLoaded, refreshFavorites, userId]);
 
   const handleImportSpotify = async () => {
-    if (!spotifyToken || isSyncing) return;
-    setIsSyncing(true);
-    setSyncStatus({ total: 0, current: 0 });
+    if (!spotifyToken || isImporting) return;
     
     try {
-      // Lógica simplificada de importação local
-      let offset = 0;
-      let hasMore = true;
-      const existingIds = new Set(favorites.map(item => item.music?.trackId || item.music?.id));
-
-      while (hasMore) {
-        const data = await spotifyService.getSavedTracks(spotifyToken, 50, offset);
-        const tracks = data.items || [];
-        
-        if (offset === 0) setSyncStatus({ total: data.total || 0, current: 0 });
-        if (tracks.length === 0) break;
-
-        for (const item of tracks) {
-          const t = item.track;
-          if (t && !existingIds.has(t.id)) {
-            await musicService.saveToCollection({
-              trackId: String(t.id),
-              nome: t.name,
-              artista: t.artists[0]?.name,
-              album: t.album.name,
-              capaUrl: t.album.images[0]?.url,
-              previewUrl: t.preview_url || '',
-              source: 'SPOTIFY'
-            });
-            existingIds.add(t.id);
-          }
-        }
-
-        setSyncStatus(prev => ({ ...prev, current: Math.min(prev.total, offset + tracks.length) }));
-        if (data.next) offset += 50; else hasMore = false;
-        await new Promise(r => setTimeout(r, 100));
-      }
-
-      await refreshFavorites(true);
+      await importSavedTracks(spotifyToken);
+      await refreshFavorites(true); // Atualiza os IDs para os corações
+      await fetchLibraryPage(0);    // Volta para a primeira página para ver as novidades
+      setCurrentPage(1);
       setMessage({ type: 'success', text: 'Importação concluída com sucesso!' });
     } catch (err) {
       console.error("Import error:", err);
       setMessage({ type: 'error', text: 'Falha na importação.' });
-    } finally {
-      setIsSyncing(false);
-      setTimeout(() => setSyncStatus({ total: 0, current: 0 }), 5000);
     }
   };
 
   const handleClearSpotify = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
+    if (isImporting || isSyncing) return;
     setShowClearSpotifyConfirm(false);
+    setIsSyncing(true);
     try {
       const deletedCount = await musicService.deleteBySource('SPOTIFY');
       await refreshFavorites(true);
+      await fetchLibraryPage(0);
+      setCurrentPage(1);
       setMessage({ type: 'success', text: `${deletedCount} músicas removidas.` });
     } catch (err) {
       console.error("Clear error:", err);
@@ -150,86 +173,26 @@ const LibraryPage = () => {
     }
   };
 
-  // Lógica de ordenação robusta e filtragem condicional
-  const sortedCollection = useMemo(() => {
-    const safeBase = Array.isArray(favorites) ? [...favorites] : [];
+  // Agora a ordenação e paginação básica é feita no SERVER,
+  // mas mantemos filtros locais para busca em tempo real se necessário.
+  const filteredCollection = useMemo(() => {
+    let filtered = [...backendSongs];
 
-    // Filtro inicial para remover itens nulos ou sem música
-    let filtered = safeBase.filter(item => item && item.music);
-
-    // Filtro de busca local
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.music.nome?.toLowerCase().includes(term) ||
-        item.music.artista?.toLowerCase().includes(term) ||
-        item.music.album?.toLowerCase().includes(term)
-      );
-    }
-
-    // REGRA DE VISIBILIDADE CONDICIONAL: Ocultar Spotify se o usuário não estiver logado no Spotify,
-    // se a sincronia estiver desligada OU se o filtro local de ocultar estiver ativo.
     if (!spotifyToken || !isSpotifySyncEnabled || hideSpotify) {
       filtered = filtered.filter(item => item.music && item.music.source !== 'SPOTIFY');
     }
 
-    return filtered.sort((a, b) => {
-      // Prioridade Absoluta: Músicas do Site (Synfonia) antes do Spotify
-      const checkSpotify = (m) => 
-        m?.source === 'SPOTIFY' || 
-        m?.isSpotify === true || 
-        (m?.id && String(m.id).length > 20) || 
-        (m?.uri && m.uri.includes('spotify'));
-
-      const isSpotifyA = checkSpotify(a.music);
-      const isSpotifyB = checkSpotify(b.music);
-      
-      if (isSpotifyA && !isSpotifyB) return 1;  // Spotify vai para depois
-      if (!isSpotifyA && isSpotifyB) return -1; // Synfonia vai para antes
-
-      let comparison = 0;
-      
-      if (sortBy === 'recent') {
-        const getTimestamp = (val) => {
-          if (!val) return 0;
-          if (Array.isArray(val)) {
-            // Spring LocalDateTime array: [year, month, day, hour, minute, second]
-            return new Date(val[0], val[1] - 1, val[2], val[3] || 0, val[4] || 0, val[5] || 0).getTime();
-          }
-          return new Date(val).getTime();
-        };
-        const timeA = getTimestamp(a.dataAdicao);
-        const timeB = getTimestamp(b.dataAdicao);
-        
-        if (timeA !== timeB) {
-          comparison = timeA - timeB;
-        } else {
-          // Desempate por ID (ID maior = inserido depois no MongoDB)
-          comparison = String(a.id || '').localeCompare(String(b.id || ''));
-        }
-      } else {
-        const valA = (sortBy === 'name' ? a.music.nome : sortBy === 'artist' ? a.music.artista : a.music.album) || '';
-        const valB = (sortBy === 'name' ? b.music.nome : sortBy === 'artist' ? b.music.artista : b.music.album) || '';
-        comparison = valA.localeCompare(valB);
-      }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-  }, [favorites, sortBy, sortOrder, isSpotifySyncEnabled, spotifyToken, hideSpotify, searchTerm]);
-
-  // Paginação segura
-  const totalPages = Math.max(1, Math.ceil(sortedCollection.length / itemsPerPage));
-  const paginatedCollection = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return sortedCollection.slice(start, start + itemsPerPage);
-  }, [sortedCollection, currentPage]);
+    return filtered;
+  }, [backendSongs, spotifyToken, isSpotifySyncEnabled, hideSpotify]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, sortOrder, searchTerm]);
+  }, [sortBy, sortOrder, debouncedSearchTerm]);
 
-  // Extrair apenas as músicas para a playlist do player
-  const playlist = sortedCollection.map(item => item.music).filter(Boolean);
+  // Extrair apenas as músicas para a playlist do player (apenas as visíveis nesta página)
+  const playlist = useMemo(() => 
+    filteredCollection.map(item => item.music).filter(Boolean),
+  [filteredCollection]);
 
   const SORT_OPTIONS = [
     { value: 'recent', label: 'Mais Recentes' },
@@ -240,7 +203,9 @@ const LibraryPage = () => {
 
   const isGuest = authService.isGuest();
 
-  if (!isFavoritesLoaded && !isGuest) {
+  // Só mostramos a tela de carregamento "cheia" se for o primeiro carregamento absoluto
+  // ou se estivermos buscando e ainda não tivermos nenhum dado para mostrar.
+  if (!isFavoritesLoaded && isLoading && !isGuest) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4">
         <Loader2 className="w-12 h-12 text-brand animate-spin" />
@@ -257,24 +222,24 @@ const LibraryPage = () => {
           <p className="text-zinc-500 font-medium mt-1">
             {isGuest
               ? "Suas músicas favoritas aparecerão aqui"
-              : `Total de ${sortedCollection.length} músicas visíveis`}
+              : `Total de ${totalElements} músicas na biblioteca`}
           </p>
         </div>
 
         {!isGuest && (
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             {/* Controles de Sincronização */}
-            {(spotifyToken || favorites.some(item => item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify')))) && (
+            {(spotifyToken || hasSpotifyTracks) && (
               <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
                 {spotifyToken && !hasSpotifyTracks && (
                   <>
                     <button
                       onClick={handleImportSpotify}
-                      disabled={isSyncing}
+                      disabled={isImporting}
                       className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all disabled:opacity-50"
                       title="Importar do Spotify para sua biblioteca local"
                     >
-                      <Download size={14} className={isSyncing ? 'animate-bounce' : ''} />
+                      <Download size={14} className={isImporting ? 'animate-bounce' : ''} />
                       <span className="hidden sm:inline">Importar do Spotify</span>
                     </button>
                     <div className="w-px h-4 bg-white/10" />
@@ -282,11 +247,11 @@ const LibraryPage = () => {
                 )}
                 <button
                   onClick={() => setShowClearSpotifyConfirm(true)}
-                  disabled={isSyncing}
+                  disabled={isImporting}
                   className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
                   title="Remover todas as músicas do Spotify da sua biblioteca"
                 >
-                  <Trash2 size={14} className={isSyncing ? 'animate-pulse' : ''} />
+                  <Trash2 size={14} className={isImporting ? 'animate-pulse' : ''} />
                   <span className="hidden sm:inline">Limpar Sincronia</span>
                 </button>
               </div>
@@ -294,7 +259,7 @@ const LibraryPage = () => {
 
 
 
-            {favorites.length > 0 && (
+            {totalElements > 0 && (
               <button
                 onClick={() => playPlaylist(playlist, { shuffle: true })}
                 className="flex items-center gap-2 px-6 py-2.5 bg-brand text-brand-contrast rounded-xl font-bold hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95"
@@ -411,13 +376,13 @@ const LibraryPage = () => {
             </div>
           )}
 
-          {favorites.length > 0 ? (
+          {backendSongs.length > 0 ? (
             <div className="space-y-6 md:space-y-8">
-              {sortedCollection.length > 0 ? (
+              {filteredCollection.length > 0 ? (
               <>{viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
                   <AnimatePresence mode="popLayout">
-                  {paginatedCollection.map((item) => (
+                  {filteredCollection.map((item) => (
                     <motion.div
                       layout
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -553,7 +518,7 @@ const LibraryPage = () => {
               ) : (
                 <div className="flex flex-col gap-2">
                   <AnimatePresence mode="popLayout">
-                  {paginatedCollection.map((item) => (
+                  {filteredCollection.map((item) => (
                     <motion.div
                       layout
                       initial={{ opacity: 0, x: -20 }}
@@ -743,14 +708,14 @@ const LibraryPage = () => {
               <h3 className="text-xl font-bold text-zinc-400">Suas curtidas estão em silêncio</h3>
               <p className="text-zinc-600 mt-2 mb-8 text-center max-w-md">Que tal curtir algumas músicas novas no Início ou trazer suas favoritas do Spotify?</p>
               {spotifyToken && !hasSpotifyTracks && (
-                <button
-                  onClick={handleImportSpotify}
-                  disabled={isSyncing}
-                  className="flex items-center gap-3 bg-brand text-brand-contrast font-bold py-4 px-8 rounded-2xl hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95"
-                >
-                  <Download size={22} className={isSyncing ? 'animate-bounce' : ''} />
-                  Importar do Spotify
-                </button>
+                  <button
+                    onClick={handleImportSpotify}
+                    disabled={isImporting}
+                    className="flex items-center gap-3 bg-brand text-brand-contrast font-bold py-4 px-8 rounded-2xl hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95"
+                  >
+                    <Download size={22} className={isImporting ? 'animate-bounce' : ''} />
+                    Importar do Spotify
+                  </button>
               )}
             </div>
           )}

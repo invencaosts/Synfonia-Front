@@ -133,7 +133,7 @@ const FullscreenPlayer = ({ onClose }) => {
         }
       }}
       style={{ touchAction: 'none' }}
-      className="fixed inset-0 z-100 bg-zinc-900 flex flex-col items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-[100] bg-zinc-900 flex flex-col items-center justify-center overflow-hidden"
     >
       {/* Animated Background */}
       <motion.div
