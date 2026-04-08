@@ -108,7 +108,9 @@ const ProfilePage = () => {
     isSpotifyConnected,
     favorites,
     isFavoritesLoaded,
-    refreshFavorites
+    refreshFavorites,
+    favoriteIds,
+    toggleFavorite
   } = useAudio();
   const { 
     resetToDefaults, 
@@ -153,8 +155,8 @@ const ProfilePage = () => {
 
   // Sincroniza o contador de músicas reativamente com o contexto global
   React.useEffect(() => {
-    setSongCount(favorites?.length || 0);
-  }, [favorites]);
+    setSongCount(favoriteIds?.size || 0);
+  }, [favoriteIds]);
 
   // Autoplay da música favorita no perfil usando o contexto global
   React.useEffect(() => {
@@ -181,11 +183,9 @@ const ProfilePage = () => {
     try {
       // Usar os favoritos globais já carregados
       const songs = Array.isArray(favorites) ? favorites.map(item => item?.music).filter(Boolean) : [];
-      setSongCount(favorites?.length || 0);
+      setSongCount(favoriteIds?.size || 0);
       
-      const filtered = !isSpotifyConnected 
-        ? songs.filter(s => s && s.source !== 'SPOTIFY' && !(s.uri && s.uri.includes('spotify')))
-        : songs;
+      const filtered = songs;
 
       setLibrarySongs(filtered);
       setSearchResults(filtered);
@@ -206,13 +206,6 @@ const ProfilePage = () => {
     const filtered = librarySongs.filter(song => {
       const matchQuery = song.nome?.toLowerCase().includes(query.toLowerCase()) || 
                          song.artista?.toLowerCase().includes(query.toLowerCase());
-      
-      // Se não está no Spotify, OCULTA músicas do Spotify (independente de ter preview ou não)
-      if (!isSpotifyConnected) {
-        return matchQuery && song && song.source !== 'SPOTIFY' && !(song.uri && song.uri.includes('spotify'));
-      }
-
-
       
       return matchQuery;
     });

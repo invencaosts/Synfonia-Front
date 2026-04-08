@@ -20,9 +20,10 @@ export const AudioProvider = ({ children }) => {
     const updateOffset = () => {
       const isMobile = window.innerWidth < 768;
       if (currentTrack) {
-        document.documentElement.style.setProperty('--player-offset', isMobile ? '160px' : '100px');
+        // Altura do player: Desktop ~96px (h-24), Mobile Mini ~80px
+        document.documentElement.style.setProperty('--player-offset', isMobile ? '80px' : '96px');
       } else {
-        document.documentElement.style.setProperty('--player-offset', isMobile ? '80px' : '0px');
+        document.documentElement.style.setProperty('--player-offset', '0px');
       }
     };
 
@@ -166,28 +167,26 @@ export const AudioProvider = ({ children }) => {
     });
   }, []);
 
-  // Lógica de Favoritos Global
+  // Lógica de Favoritos Global (Agora Otimizada: busca apenas IDs)
   const refreshFavorites = useCallback(async (force = false) => {
     const user = authService.getCurrentUser();
     if (!user || user.guest || (isFavoritesLoaded && !force) || isRefreshingFavorites) return;
 
     setIsRefreshingFavorites(true);
     try {
-      const data = await musicService.getCollection();
-      const collection = Array.isArray(data) ? data : [];
-      setFavorites(collection);
+      // Pequeno fôlego para o navegador
+      await new Promise(r => setTimeout(r, 100));
       
-      const ids = new Set();
-      collection.forEach(item => {
-        if (item.music) {
-          if (item.music.trackId) ids.add(String(item.music.trackId));
-          if (item.music.id) ids.add(String(item.music.id));
-        }
-      });
-      setFavoriteIds(ids);
+      const ids = await musicService.getFavoriteIds();
+      setFavoriteIds(new Set(ids || []));
+      
+      // Carregamos apenas um pequeno lote inicial para contextos que precisam de dados básicos
+      const firstPage = await musicService.getCollection(0, 50);
+      setFavorites(firstPage.content || []);
+      
       setIsFavoritesLoaded(true);
     } catch (err) {
-      console.error("AudioContext: Erro ao carregar favoritos:", err);
+      console.error("AudioContext: Erro ao carregar IDs de favoritos:", err);
     } finally {
       setIsRefreshingFavorites(false);
     }

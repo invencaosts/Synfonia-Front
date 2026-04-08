@@ -26,9 +26,8 @@ const DashboardPage = () => {
   const spotifyToken = spotifyService.getAccessToken();
 
   const filteredHistory = useMemo(() => {
-    if (spotifyToken) return history;
-    return history.filter(item => item.music && item.music.source !== 'SPOTIFY' && !(item.music.uri && item.music.uri.includes('spotify')));
-  }, [history, spotifyToken]);
+    return history;
+  }, [history]);
 
   useEffect(() => {
     const fetchHistory = async () => {

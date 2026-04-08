@@ -76,7 +76,7 @@ export const authService = {
 
     try {
       // Chama o endpoint /me para validar se o cookie da sessão ainda é válido
-      const response = await api.get('/auth/me');
+      const response = await api.get('/users/me');
       localStorage.setItem('user', JSON.stringify(response.data));
       return response.data;
     } catch (err) {

@@ -145,6 +145,91 @@ export const ImportProvider = ({ children }) => {
     }, 5000);
   }, []);
 
+  const importSavedTracks = useCallback(async (spotifyToken) => {
+    if (!spotifyToken) return;
+
+    setIsImporting(true);
+    setImportProgress({ current: 0, total: 0, name: 'Músicas Curtidas', status: 'fetching' });
+
+    try {
+      let allTracksFound = [];
+      let nextUrl = `https://api.spotify.com/v1/me/tracks?limit=50&offset=0`;
+      let totalToImport = 0;
+      let importedCount = 0;
+
+      // 1. Fase de Descoberta: Pega os metadados iniciais e calcula o total
+      const initialResponse = await fetch(nextUrl, {
+        headers: { 'Authorization': `Bearer ${spotifyToken}` }
+      });
+      if (!initialResponse.ok) throw new Error("Falha ao acessar Spotify API");
+      
+      const initialData = await initialResponse.json();
+      totalToImport = initialData.total;
+      setImportProgress(prev => ({ ...prev, total: totalToImport, status: 'importing' }));
+
+      // 2. Loop de Importação em Lotes (Seguindo a paginação do Spotify)
+      while (nextUrl) {
+        const response = await fetch(nextUrl, {
+          headers: { 'Authorization': `Bearer ${spotifyToken}` }
+        });
+        
+        if (!response.ok) {
+          console.error("[Import] Falha no lote de músicas do Spotify.");
+          break;
+        }
+
+        const data = await response.json();
+        const items = data.items || [];
+        
+        if (items.length === 0) break;
+
+        console.log(`[Import] Processando lote de ${items.length} músicas...`);
+
+        // Enviar lote atual para o backend (Poderia ser um batch save se o backend suportasse, 
+        // mas vamos manter individualmente por compatibilidade com musicService.js atual)
+        for (const item of items) {
+          if (!item.track) continue;
+
+          const musicData = {
+            trackId: item.track.id,
+            nome: item.track.name,
+            artista: item.track.artists?.map(a => a.name).join(', ') || 'Artista Desconhecido',
+            album: item.track.album?.name || "",
+            capaUrl: item.track.album?.images?.[0]?.url || "",
+            previewUrl: item.track.preview_url || "",
+            source: "SPOTIFY"
+          };
+
+          try {
+            await musicService.saveToCollection(musicData);
+            importedCount++;
+            setImportProgress(prev => ({ ...prev, current: importedCount }));
+          } catch (err) {
+            console.error(`[Import] Erro ao salvar "${musicData.nome}":`, err);
+          }
+        }
+
+        nextUrl = data.next; // URL da próxima página (vinda do Spotify)
+      }
+
+      setImportProgress(prev => ({ 
+        ...prev, 
+        current: importedCount, 
+        status: 'completed' 
+      }));
+      
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportProgress({ current: 0, total: 0, name: '', status: 'idle' });
+      }, 5000);
+
+    } catch (err) {
+      console.error("[Import] Erro fatal na importação de curtidas:", err);
+      setImportProgress(prev => ({ ...prev, status: 'idle' }));
+      setIsImporting(false);
+    }
+  }, []);
+
   const exportPlaylists = useCallback(async (playlistIds, allPlaylists, spotifyToken, urlToBase64Helper) => {
     if (!spotifyToken || playlistIds.length === 0) return;
 
@@ -246,6 +331,7 @@ export const ImportProvider = ({ children }) => {
       lastImportedPlaylist,
       importPlaylist,
       importAllPlaylists,
+      importSavedTracks,
       isExporting,
       exportProgress,
       exportPlaylists

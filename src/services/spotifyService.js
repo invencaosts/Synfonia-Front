@@ -21,17 +21,20 @@ const SCOPES = [
 export const spotifyService = {
   getLoginUrl: () => {
     // IMPORTANTE: Mudamos para response_type=code (Authorization Code Flow) e forçamos o diálogo para atualizar scopes
-    return `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES.join(' '))}&show_dialog=true`;
+    // Adicionamos state=synfonia-auth para proteção CSRF básica compatível com HttpOnly Cookies
+    return `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES.join(' '))}&state=synfonia-auth&show_dialog=true`;
   },
 
   handleCallback: async () => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+    // Busca parâmetros tanto na query string (?...) quanto no hash (#...) para máxima compatibilidade
+    const urlParams = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || window.location.hash.substring(window.location.hash.indexOf('?')));
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
     
     if (code) {
       try {
-        // Chamamos o NOSSO backend para trocar o código pelo token (mais seguro)
-        const response = await api.get(`/spotify/callback?code=${code}`);
+        // Chamamos o NOSSO backend para trocar o código pelo token (agora passando o state obrigatório)
+        const response = await api.get(`/spotify/callback?code=${code}&state=${state || ''}`);
         const { access_token, expires_in } = response.data;
 
         if (access_token) {
