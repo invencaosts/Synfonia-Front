@@ -142,6 +142,26 @@ const LibraryPage = () => {
     }
   };
 
+  const handleShuffleAll = async () => {
+    setIsSyncing(true);
+    try {
+      // Buscar TODOS os IDs de favoritos do usuário (ignora paginação)
+      const allIds = await musicService.getFavoriteIds();
+      if (allIds && allIds.length > 0) {
+        // Disparar o modo aleatório no player com a lista completa
+        playPlaylist(allIds, { shuffle: true });
+        setMessage({ type: 'success', text: `Iniciando modo aleatório com ${allIds.length} músicas.` });
+      } else {
+        setMessage({ type: 'error', text: 'Sua biblioteca está vazia.' });
+      }
+    } catch (err) {
+      console.error("Shuffle All error:", err);
+      setMessage({ type: 'error', text: 'Erro ao iniciar modo aleatório global.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const removeMusic = async (record) => {
     if (!user || !record || !record.music) return;
     setDeletingId(record.id || record.music.id);
@@ -261,10 +281,11 @@ const LibraryPage = () => {
 
             {totalElements > 0 && (
               <button
-                onClick={() => playPlaylist(playlist, { shuffle: true })}
-                className="flex items-center gap-2 px-6 py-2.5 bg-brand text-brand-contrast rounded-xl font-bold hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95"
+                onClick={handleShuffleAll}
+                disabled={isSyncing}
+                className="flex items-center gap-2 px-6 py-2.5 bg-brand text-brand-contrast rounded-xl font-bold hover:bg-brand/90 transition-all shadow-lg shadow-brand/20 active:scale-95 disabled:opacity-50"
               >
-                <Shuffle size={18} />
+                <Shuffle size={18} className={isSyncing ? 'animate-spin' : ''} />
                 <span className="hidden sm:inline">Modo Aleatório</span>
               </button>
             )}

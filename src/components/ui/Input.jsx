@@ -12,21 +12,21 @@ const Input = ({
   return (
     <div className={`space-y-1.5 ${containerClassName}`}>
       {label && (
-        <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider ml-1">
+        <label className="text-xs font-semibold text-dim uppercase tracking-wider ml-1">
           {label}
         </label>
       ) }
       <div className="relative group">
         {Icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-brand transition-colors">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-dim/50 group-focus-within:text-brand transition-colors">
             <Icon size={18} />
           </div>
         )}
         <input
           className={`
-            w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 outline-none 
+            w-full bg-main/5 border border-(--border-subtle) rounded-2xl py-3.5 outline-none 
             focus:border-brand/50 focus:ring-1 focus:ring-brand/20 transition-all 
-            text-white text-sm placeholder:text-zinc-600
+            text-main text-sm placeholder:text-dim/40
             ${Icon ? 'pl-12' : 'pl-5'} 
             ${rightElement ? 'pr-12' : 'pr-5'}
             ${error ? 'border-red-500/50' : ''}
