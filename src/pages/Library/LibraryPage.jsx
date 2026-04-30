@@ -145,14 +145,21 @@ const LibraryPage = () => {
   const handleShuffleAll = async () => {
     setIsSyncing(true);
     try {
-      // Buscar TODOS os IDs de favoritos do usuário (ignora paginação)
-      const allIds = await musicService.getFavoriteIds();
+      // Filtrar Spotify se não houver token ou se estiver oculto (Resolvendo P1 do Codex)
+      const params = {};
+      if (!spotifyToken || !isSpotifySyncEnabled || hideSpotify) {
+        params.excludeSource = 'SPOTIFY';
+      }
+
+      // Buscar IDs filtrados (ignora paginação)
+      const allIds = await musicService.getFavoriteIds(params);
+      
       if (allIds && allIds.length > 0) {
-        // Disparar o modo aleatório no player com a lista completa
-        playPlaylist(allIds, { shuffle: true });
+        // Adicionar await para que o estado de sync espere o player carregar (Resolvendo P2 do Codex)
+        await playPlaylist(allIds, { shuffle: true });
         setMessage({ type: 'success', text: `Iniciando modo aleatório com ${allIds.length} músicas.` });
       } else {
-        setMessage({ type: 'error', text: 'Sua biblioteca está vazia.' });
+        setMessage({ type: 'error', text: 'Sua biblioteca está vazia ou sem músicas locais.' });
       }
     } catch (err) {
       console.error("Shuffle All error:", err);
