@@ -34,6 +34,11 @@ export const musicService = {
     return response.data;
   },
 
+  getByIds: async (ids) => {
+    const response = await api.post('/musicas/batch', ids);
+    return response.data;
+  },
+
   addToHistory: async (trackId, musicData) => {
     await api.post(`/historico/${trackId}`, musicData || {});
   },

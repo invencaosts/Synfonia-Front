@@ -1223,9 +1223,8 @@ export const AudioProvider = ({ children }) => {
       if (isFullObjects) {
         filteredTracks = trackData.filter(Boolean);
       } else {
-        // Se forem apenas IDs, buscar os objetos completos
-        const trackPromises = trackData.map(id => musicService.getById(id));
-        const tracks = await Promise.all(trackPromises);
+        // Se forem apenas IDs, buscar os objetos completos em lote (OTIMIZADO)
+        const tracks = await musicService.getByIds(trackData);
         filteredTracks = tracks.filter(Boolean);
       }
       
