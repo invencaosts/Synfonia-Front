@@ -20,8 +20,8 @@ export const musicService = {
     return response.data; // Agora retorna um objeto Page (com content, totalPages, etc)
   },
 
-  getFavoriteIds: async () => {
-    const response = await api.get('/users/me/songs/ids');
+  getFavoriteIds: async (params = {}) => {
+    const response = await api.get('/users/me/songs/ids', { params });
     return response.data; // Lista simples de strings
   },
 
