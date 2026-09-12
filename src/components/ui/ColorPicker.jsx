@@ -1,13 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Palette } from 'lucide-react';
 
+const assignRef = (ref, value) => {
+  if (typeof ref === 'function') ref(value);
+  else if (ref) ref.current = value;
+};
+
 const ColorPicker = ({ color, onChange, onInput, inputRef, title }) => {
   const internalRef = useRef(null);
   const [localColor, setLocalColor] = useState(color || '#ffffff');
+  const [prevColorProp, setPrevColorProp] = useState(color);
 
-  useEffect(() => {
+  if (color !== prevColorProp) {
+    setPrevColorProp(color);
     setLocalColor(color || '#ffffff');
-  }, [color]);
+  }
 
   useEffect(() => {
     const el = internalRef.current;
@@ -47,10 +54,7 @@ const ColorPicker = ({ color, onChange, onInput, inputRef, title }) => {
       <input
         ref={(el) => {
           internalRef.current = el;
-          if (inputRef) {
-            if (typeof inputRef === 'function') inputRef(el);
-            else inputRef.current = el;
-          }
+          assignRef(inputRef, el);
         }}
         type="color"
         value={localColor}

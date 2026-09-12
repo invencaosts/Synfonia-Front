@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAudio } from '../../hooks/useAudio';
-import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/userService';
 import { playlistService } from '../../services/playlistService';
 import { authService } from '../../services/authService';
@@ -91,32 +90,21 @@ const ProfilePage = () => {
   const [searchResults, setSearchResults] = React.useState([]);
   const [librarySongs, setLibrarySongs] = React.useState([]);
   const [searching, setSearching] = React.useState(false);
-  const [isPlayingPreview, setIsPlayingPreview] = React.useState(false);
-  const [profileAudio, setProfileAudio] = React.useState(null);
+  const [, setIsPlayingPreview] = React.useState(false);
   const audioRef = React.useRef(null);
 
-  const { 
-    pauseTrack, 
-    playTrack, 
-    isFavoriteAutoplayEnabled, 
-    favoriteTrackVolume,
+  const {
+    isFavoriteAutoplayEnabled,
     isPlayingProfile,
     playProfileAudio,
     stopProfileAudio,
     playPlaylist,
     spotifyNowPlaying,
-    isSpotifyConnected,
     favorites,
     isFavoritesLoaded,
     refreshFavorites,
-    favoriteIds,
-    toggleFavorite
+    favoriteIds
   } = useAudio();
-  const { 
-    resetToDefaults, 
-    queuePosition, 
-    setQueuePosition 
-  } = useTheme();
   const isGuest = authService.isGuest();
 
   React.useEffect(() => {
@@ -151,7 +139,7 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('userUpdate', handleUserUpdate);
     };
-  }, [user?.id, isGuest, isFavoritesLoaded]);
+  }, [user?.id, isGuest, isFavoritesLoaded, refreshFavorites]);
 
   // Sincroniza o contador de músicas reativamente com o contexto global
   React.useEffect(() => {
@@ -167,6 +155,9 @@ const ProfilePage = () => {
     return () => {
       stopProfileAudio();
     };
+    // playProfileAudio/stopProfileAudio não são memoizadas no AudioContext (recriadas a cada
+    // render); incluí-las aqui reiniciaria o áudio favorito constantemente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.favoriteTrackPreviewUrl, isGuest, isFavoriteAutoplayEnabled]);
 
   const toggleProfileAudio = () => {
@@ -373,9 +364,19 @@ const ProfilePage = () => {
     setShowSocialModal(false);
   };
 
-  const formattedJoinDate = user?.dataCriacao 
-    ? new Date(user.dataCriacao).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : '...';
+  // Hooks precisam rodar sempre na mesma ordem, então esse efeito fica antes do
+  // early-return de convidado (guest nunca chega no modal que usa identityData).
+  React.useEffect(() => {
+    if (user) {
+      setIdentityData({
+        username: user.username || '',
+        displayName: user.displayName || '',
+        personalName: user.personalName || '',
+        showPersonalName: user.showPersonalName ?? true,
+        showSpotifyActivity: user.showSpotifyActivity ?? true
+      });
+    }
+  }, [user]);
 
   if (isGuest) {
     return (
@@ -423,18 +424,6 @@ const ProfilePage = () => {
       setIsUpdatingIdentity(false);
     }
   };
-
-  React.useEffect(() => {
-    if (user) {
-      setIdentityData({
-        username: user.username || '',
-        displayName: user.displayName || '',
-        personalName: user.personalName || '',
-        showPersonalName: user.showPersonalName ?? true,
-        showSpotifyActivity: user.showSpotifyActivity ?? true
-      });
-    }
-  }, [user]);
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-0 space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-32 md:pb-8">

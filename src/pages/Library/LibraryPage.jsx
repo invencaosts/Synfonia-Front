@@ -9,16 +9,15 @@ import {
 import AddToPlaylistMenu from '../../components/Playlist/AddToPlaylistMenu';
 import { musicService } from '../../services/musicService';
 import { authService } from '../../services/authService';
-import { spotifyService } from '../../services/spotifyService';
 import { useAudio } from '../../hooks/useAudio';
-import { useTheme } from '../../context/ThemeContext';
-import { useImport } from '../../context/ImportContext';
+import { useTheme } from '../../hooks/useTheme';
+import { useImport } from '../../hooks/useImport';
 
 const LibraryPage = () => {
   const {
     playTrack, currentTrack, isPlaying, addToQueue,
     playNext, playPlaylist, spotifyToken, isSpotifySyncEnabled,
-    favorites, isFavoritesLoaded, refreshFavorites, toggleFavorite
+    isFavoritesLoaded, refreshFavorites, toggleFavorite
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
   const { isImporting, importSavedTracks } = useImport();
@@ -38,7 +37,7 @@ const LibraryPage = () => {
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const [hideSpotify, setHideSpotify] = useState(false);
+  const [hideSpotify] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -195,7 +194,7 @@ const LibraryPage = () => {
         return `${day}/${month}/${year}`;
       }
       return new Date(dateValue).toLocaleDateString();
-    } catch (e) {
+    } catch {
       return 'Data inválida';
     }
   };

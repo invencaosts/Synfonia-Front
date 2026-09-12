@@ -14,7 +14,6 @@ const AudioPlayer = () => {
     togglePlay,
     skipNext,
     skipPrevious,
-    audioElement,
     isAutoplayEnabled,
     setIsAutoplayEnabled,
     favoriteTrackVolume,
@@ -23,7 +22,6 @@ const AudioPlayer = () => {
     duration,
     seek,
     isBuffering,
-    isSpotifyPlayback,
     volume,
     setVolume,
     favoriteIds,
@@ -39,6 +37,7 @@ const AudioPlayer = () => {
   const [hoverExpand, setHoverExpand] = useState(false);
   const [currentHeight, setCurrentHeight] = useState(80);
   const [isDragging, setIsDragging] = useState(false);
+  const [prevIsExpanded, setPrevIsExpanded] = useState(isExpanded);
   const wasPlayingRef = useRef(false);
   const touchStartY = useRef(0);
   const startDragOffset = useRef(0);
@@ -48,12 +47,11 @@ const AudioPlayer = () => {
   const EXPANDED_HEIGHT = typeof window !== 'undefined' ? window.innerHeight * 0.6 : 480;
   const MAX_DRAG = EXPANDED_HEIGHT - MINI_HEIGHT;
 
-  // Initialize currentHeight based on isExpanded
-  useEffect(() => {
-    if (!isDragging) {
-      setCurrentHeight(isExpanded ? EXPANDED_HEIGHT : MINI_HEIGHT);
-    }
-  }, [isExpanded, isDragging, EXPANDED_HEIGHT, MINI_HEIGHT]);
+  // Sincroniza currentHeight com isExpanded fora de um drag (ajuste durante o render, sem efeito)
+  if (!isDragging && isExpanded !== prevIsExpanded) {
+    setPrevIsExpanded(isExpanded);
+    setCurrentHeight(isExpanded ? EXPANDED_HEIGHT : MINI_HEIGHT);
+  }
 
   const user = authService.getCurrentUser();
   const isFavorite = currentTrack && (currentTrack.id === user?.favoriteTrackId || currentTrack.trackId === user?.favoriteTrackId);
@@ -68,10 +66,6 @@ const AudioPlayer = () => {
     seek(newTime);
   };
 
-  const handleProgressEnd = () => {
-    setSeekProgress(null);
-  };
-
   const prevVolumeRef = useRef(volume);
 
   useEffect(() => {
@@ -83,11 +77,15 @@ const AudioPlayer = () => {
     } else {
       setVolume(0.7);
     }
+    // Só deve reagir ao toggle de mute, não a toda mudança de volume (senão reentra em loop com o próprio setVolume acima)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMuted]);
 
-  useEffect(() => {
+  const [prevTrackId, setPrevTrackId] = useState(currentTrack?.id);
+  if (currentTrack?.id !== prevTrackId) {
+    setPrevTrackId(currentTrack?.id);
     setSeekProgress(null);
-  }, [currentTrack?.id]);
+  }
 
   const togglePlayRef = useRef(togglePlay);
   useEffect(() => {

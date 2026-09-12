@@ -53,7 +53,7 @@ const SpotifyCallback = () => {
     };
 
     handleAuth();
-  }, [navigate]);
+  }, [navigate, refreshSpotifyToken]);
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-[#09090b] text-white">

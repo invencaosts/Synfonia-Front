@@ -23,7 +23,7 @@ const Modal = ({
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleEsc);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnOutsideClick]);
 
   return (
     <AnimatePresence>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { musicService } from '../services/musicService';
 import { spotifyService } from '../services/spotifyService';
@@ -34,8 +34,6 @@ export const AudioProvider = ({ children }) => {
 
   const [spotifyToken, setSpotifyToken] = useState(spotifyService.getAccessToken());
   const [isSpotifyReady, setIsSpotifyReady] = useState(false);
-  const [spotifyPlayer, setSpotifyPlayer] = useState(null);
-  const [spotifyDeviceId, setSpotifyDeviceId] = useState(null);
   const [isSpotifyPlayback, setIsSpotifyPlayback] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [spotifyNowPlaying, setSpotifyNowPlaying] = useState(null);
@@ -139,33 +137,6 @@ export const AudioProvider = ({ children }) => {
       }
     }
   }, [spotifyToken]);
-
-  const fadeOutCurrentAudio = useCallback(() => {
-    return new Promise((resolve) => {
-      const audio = audioRef.current;
-      if (!audio || audio.paused || audio.volume === 0) {
-        resolve();
-        return;
-      }
-
-      const originalVolume = audio.volume;
-      const steps = 10;
-      const stepDuration = 40;
-      let currentStep = 0;
-
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        audio.volume = Math.max(0, originalVolume * (1 - currentStep / steps));
-
-        if (currentStep >= steps) {
-          clearInterval(fadeInterval);
-          audio.pause();
-          audio.volume = originalVolume;
-          resolve();
-        }
-      }, stepDuration);
-    });
-  }, []);
 
   // Lógica de Favoritos Global (Agora Otimizada: busca apenas IDs)
   const refreshFavorites = useCallback(async (force = false) => {
@@ -426,7 +397,7 @@ export const AudioProvider = ({ children }) => {
     }
 
     return success;
-  }, [spotifyToken, stopProfileAudio, playPreview, playOnSpotify]); 
+  }, [spotifyToken, stopProfileAudio, playPreview, playOnSpotify, isPlaying]); 
 
   const playFromQueue = useCallback((index) => {
     const currentQueue = queueRef.current;
@@ -640,7 +611,6 @@ export const AudioProvider = ({ children }) => {
     player.addListener('ready', ({ device_id }) => {
       console.log('Spotify Player: Pronto com ID', device_id);
       spotifyDeviceIdRef.current = device_id;
-      setSpotifyDeviceId(device_id);
       isSpotifyReadyRef.current = true;
       setIsSpotifyReady(true);
       player.setVolume(volumeRef.current).catch(console.error);
@@ -813,7 +783,9 @@ export const AudioProvider = ({ children }) => {
 
     player.connect();
     spotifyPlayerRef.current = player;
-    setSpotifyPlayer(player);
+    // Deps vazias de propósito: o player deve ser inicializado uma única vez.
+    // syncSpotifyQueue é lido via closure e é estável o suficiente para esse uso pontual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Fixed: No longer depends on playFromQueue
 
   useEffect(() => {
@@ -1079,9 +1051,7 @@ export const AudioProvider = ({ children }) => {
     isSpotifyReadyRef.current = false;
     setIsSpotifyReady(false);
     spotifyPlayerRef.current = null;
-    setSpotifyPlayer(null);
     spotifyDeviceIdRef.current = null;
-    setSpotifyDeviceId(null);
     setIsSpotifyPlayback(false);
   };
 
