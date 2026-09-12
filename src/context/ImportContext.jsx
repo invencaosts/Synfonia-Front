@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { playlistService } from '../services/playlistService';
 import { spotifyService } from '../services/spotifyService';
 import { musicService } from '../services/musicService';
-
-const ImportContext = createContext();
+import { ImportContext } from './ImportContextObject';
 
 export const ImportProvider = ({ children }) => {
   const [isImporting, setIsImporting] = useState(false);
@@ -152,7 +151,6 @@ export const ImportProvider = ({ children }) => {
     setImportProgress({ current: 0, total: 0, name: 'Músicas Curtidas', status: 'fetching' });
 
     try {
-      let allTracksFound = [];
       let nextUrl = `https://api.spotify.com/v1/me/tracks?limit=50&offset=0`;
       let totalToImport = 0;
       let importedCount = 0;
@@ -340,5 +338,3 @@ export const ImportProvider = ({ children }) => {
     </ImportContext.Provider>
   );
 };
-
-export const useImport = () => useContext(ImportContext);
