@@ -35,6 +35,7 @@ export const AudioProvider = ({ children }) => {
   const [spotifyToken, setSpotifyToken] = useState(spotifyService.getAccessToken());
   const [isSpotifyReady, setIsSpotifyReady] = useState(false);
   const [isSpotifyPlayback, setIsSpotifyPlayback] = useState(false);
+  const [isYoutubePlayback, setIsYoutubePlayback] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [spotifyNowPlaying, setSpotifyNowPlaying] = useState(null);
 
@@ -82,6 +83,8 @@ export const AudioProvider = ({ children }) => {
   const spotifyPlayerRef = useRef(null);
   const isSpotifyReadyRef = useRef(false);
   const spotifyDeviceIdRef = useRef(null);
+  const ytPlayerRef = useRef(null);
+  const youtubeApiPromiseRef = useRef(null);
   const playTrackInternalRef = useRef(null);
   const playFromQueueRef = useRef(null);
   const lastHistoryTrackIdRef = useRef(null);
@@ -131,7 +134,7 @@ export const AudioProvider = ({ children }) => {
         setIsPlaying(false);
         if (audioRef.current) {
           audioRef.current.pause();
-          audioRef.current.src = "";
+          audioRef.current.removeAttribute('src');
         }
         console.log("AudioContext: Parando reprodução do Spotify (Logout)");
       }
@@ -251,12 +254,111 @@ export const AudioProvider = ({ children }) => {
       wasPlayingMainRef.current = false;
       if (isSpotifyPlayback && spotifyPlayerRef.current) {
         spotifyPlayerRef.current.resume();
+      } else if (isYoutubePlayback && ytPlayerRef.current) {
+        ytPlayerRef.current.playVideo();
       } else if (audioRef.current && currentTrackRef.current) {
         audioRef.current.play();
       }
       setIsPlaying(true);
     }
-  }, [isSpotifyPlayback]);
+  }, [isSpotifyPlayback, isYoutubePlayback]);
+
+  const getYoutubeVideoId = (track) => {
+    if (track?.id && /^[a-zA-Z0-9_-]{11}$/.test(track.id)) return track.id;
+    const match = /[?&]v=([a-zA-Z0-9_-]{11})/.exec(track?.uri || '');
+    return match ? match[1] : null;
+  };
+
+  const handleYoutubeStateChange = (event) => {
+    const YT = window.YT;
+    if (!YT) return;
+
+    if (event.data === YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      setIsBuffering(false);
+    } else if (event.data === YT.PlayerState.PAUSED) {
+      setIsPlaying(false);
+    } else if (event.data === YT.PlayerState.BUFFERING) {
+      setIsBuffering(true);
+    } else if (event.data === YT.PlayerState.ENDED) {
+      if (isAutoplayRef.current) {
+        const qi = queueIndexRef.current;
+        setTimeout(() => playFromQueueRef.current?.(qi + 1), 300);
+      }
+    }
+  };
+
+  // Carrega o YouTube IFrame API sob demanda (só quando o usuário realmente
+  // toca algo do YouTube Music) e inicializa um player oculto reutilizável.
+  const ensureYoutubeReady = useCallback(() => {
+    if (youtubeApiPromiseRef.current) return youtubeApiPromiseRef.current;
+
+    youtubeApiPromiseRef.current = new Promise((resolve) => {
+      const setupPlayer = () => {
+        if (ytPlayerRef.current) {
+          resolve();
+          return;
+        }
+        ytPlayerRef.current = new window.YT.Player('synfonia-yt-player', {
+          height: '0',
+          width: '0',
+          playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1 },
+          events: {
+            onReady: () => resolve(),
+            onStateChange: handleYoutubeStateChange,
+            onError: (event) => {
+              console.error('YouTube Player Error:', event.data);
+              setIsBuffering(false);
+              setIsPlaying(false);
+            }
+          }
+        });
+      };
+
+      if (window.YT && window.YT.Player) {
+        setupPlayer();
+        return;
+      }
+
+      const previousCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (previousCallback) previousCallback();
+        setupPlayer();
+      };
+
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://www.youtube.com/iframe_api';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    });
+
+    return youtubeApiPromiseRef.current;
+  }, []);
+
+  const playOnYoutube = useCallback(async (track) => {
+    const videoId = getYoutubeVideoId(track);
+    if (!videoId) {
+      console.warn("Audio Context: ID de vídeo do YouTube não encontrado para:", track.nome);
+      return false;
+    }
+
+    try {
+      await ensureYoutubeReady();
+      setIsSpotifyPlayback(false);
+      ytPlayerRef.current.loadVideoById(videoId);
+      ytPlayerRef.current.setVolume(Math.round(volumeRef.current * 100));
+      setIsYoutubePlayback(true);
+      setIsBuffering(true);
+      if (audioRef.current) audioRef.current.pause();
+      return true;
+    } catch (err) {
+      console.error("YouTube Playback Error:", err);
+      setIsBuffering(false);
+      return false;
+    }
+  }, [ensureYoutubeReady]);
 
   const playOnSpotify = useCallback(async (track) => {
     if (!spotifyToken || !spotifyDeviceIdRef.current) return false;
@@ -299,9 +401,11 @@ export const AudioProvider = ({ children }) => {
 
       console.log("Spotify Playback: Successo!");
       setIsSpotifyPlayback(true);
+      setIsYoutubePlayback(false);
       setIsPlaying(true);
       setIsBuffering(false);
       if (audioRef.current) audioRef.current.pause();
+      if (ytPlayerRef.current) ytPlayerRef.current.pauseVideo();
       return true;
     } catch (err) {
       console.error("Spotify Playback Error:", err);
@@ -322,6 +426,8 @@ export const AudioProvider = ({ children }) => {
     }
 
     setIsSpotifyPlayback(false);
+    setIsYoutubePlayback(false);
+    if (ytPlayerRef.current) ytPlayerRef.current.pauseVideo();
 
     if (audioRef.current) {
       audioRef.current.src = previewUrl;
@@ -353,6 +459,7 @@ export const AudioProvider = ({ children }) => {
 
     const isSpotifyTrack = track.isSpotify || track.source === "SPOTIFY" || (track.uri && track.uri.includes('spotify'));
     const isSpotifyReady = isSpotifyReadyRef.current && !!spotifyToken;
+    const isYoutubeTrack = track.source === "YOUTUBE_MUSIC" || (track.uri && track.uri.includes('youtube.com'));
 
     // SÓ resetamos o estado global se for uma música REALMENTE diferente.
     // Se for a mesma (ex: tentativa de recuperação de autoplay), mantemos a UI estável.
@@ -364,16 +471,21 @@ export const AudioProvider = ({ children }) => {
         // Pausar players ativos apenas se for mudar de música
         if (audioRef.current) {
           audioRef.current.pause();
-          audioRef.current.src = "";
+          audioRef.current.removeAttribute('src');
         }
         if (spotifyPlayerRef.current) {
             spotifyPlayerRef.current.pause().catch(() => {});
+        }
+        if (ytPlayerRef.current) {
+            ytPlayerRef.current.pauseVideo();
         }
     }
 
 
     let success = false;
-    if (isSpotifyTrack && isSpotifyReady) {
+    if (isYoutubeTrack) {
+      success = await playOnYoutube(track);
+    } else if (isSpotifyTrack && isSpotifyReady) {
       success = await playOnSpotify(track);
     } else {
       success = await playPreview(track);
@@ -387,7 +499,7 @@ export const AudioProvider = ({ children }) => {
         artista: track.artista,
         album: track.album || "",
         capaUrl: track.capaUrl || "",
-        source: isSpotifyTrack ? "SPOTIFY" : "ITUNES"
+        source: isYoutubeTrack ? "YOUTUBE_MUSIC" : isSpotifyTrack ? "SPOTIFY" : "ITUNES"
       }).catch(console.error);
     }
 
@@ -397,7 +509,7 @@ export const AudioProvider = ({ children }) => {
     }
 
     return success;
-  }, [spotifyToken, stopProfileAudio, playPreview, playOnSpotify, isPlaying]); 
+  }, [spotifyToken, stopProfileAudio, playPreview, playOnSpotify, playOnYoutube, isPlaying]);
 
   const playFromQueue = useCallback((index) => {
     const currentQueue = queueRef.current;
@@ -944,7 +1056,7 @@ export const AudioProvider = ({ children }) => {
   }, [spotifyToken, initSpotifyPlayer]);
 
   useEffect(() => {
-    if (!audioRef.current || isSpotifyPlayback) return;
+    if (!audioRef.current || isSpotifyPlayback || isYoutubePlayback) return;
 
     const audio = audioRef.current;
     const updateProgress = () => {
@@ -959,7 +1071,7 @@ export const AudioProvider = ({ children }) => {
       audio.removeEventListener('timeupdate', updateProgress);
       audio.removeEventListener('loadedmetadata', updateProgress);
     };
-  }, [isSpotifyPlayback, currentTrack]);
+  }, [isSpotifyPlayback, isYoutubePlayback, currentTrack]);
 
   useEffect(() => {
     if (!spotifyPlayerRef.current || !isSpotifyPlayback || !isPlaying) return;
@@ -973,6 +1085,21 @@ export const AudioProvider = ({ children }) => {
 
     return () => clearInterval(interval);
   }, [isSpotifyPlayback, isPlaying]);
+
+  useEffect(() => {
+    if (!ytPlayerRef.current || !isYoutubePlayback || !isPlaying) return;
+
+    const interval = setInterval(() => {
+      const player = ytPlayerRef.current;
+      if (player && typeof player.getCurrentTime === 'function') {
+        setCurrentTime(player.getCurrentTime());
+        const d = player.getDuration();
+        if (d) setDuration(d);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isYoutubePlayback, isPlaying]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -1067,6 +1194,8 @@ export const AudioProvider = ({ children }) => {
       wasPlayingMainRef.current = true;
       if (isSpotifyPlayback && spotifyPlayerRef.current) {
         spotifyPlayerRef.current.pause();
+      } else if (isYoutubePlayback && ytPlayerRef.current) {
+        ytPlayerRef.current.pauseVideo();
       } else if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -1232,6 +1361,17 @@ export const AudioProvider = ({ children }) => {
       return;
     }
 
+    if (isYoutubePlayback && ytPlayerRef.current) {
+      if (isPlaying) {
+        ytPlayerRef.current.pauseVideo();
+        setIsPlaying(false);
+      } else {
+        ytPlayerRef.current.playVideo();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     if (!audioRef.current || !currentTrack) return;
 
     if (audioRef.current.paused) {
@@ -1301,10 +1441,12 @@ export const AudioProvider = ({ children }) => {
     
     if (isSpotifyPlayback && spotifyPlayerRef.current) {
       spotifyPlayerRef.current.setVolume(val).catch(console.error);
+    } else if (isYoutubePlayback && ytPlayerRef.current) {
+      ytPlayerRef.current.setVolume(Math.round(val * 100));
     } else if (audioRef.current) {
       audioRef.current.volume = val;
     }
-  }, [isSpotifyPlayback]);
+  }, [isSpotifyPlayback, isYoutubePlayback]);
 
   return (
     <PlayerContext.Provider value={{
@@ -1354,6 +1496,9 @@ export const AudioProvider = ({ children }) => {
         if (isSpotifyPlayback && spotifyPlayerRef.current) {
           spotifyPlayerRef.current.seek(time * 1000);
           setCurrentTime(time);
+        } else if (isYoutubePlayback && ytPlayerRef.current) {
+          ytPlayerRef.current.seekTo(time, true);
+          setCurrentTime(time);
         } else if (audioRef.current) {
           audioRef.current.currentTime = time;
           setCurrentTime(time);
@@ -1367,6 +1512,8 @@ export const AudioProvider = ({ children }) => {
       toggleFavorite
     }}>
       {children}
+
+      <div id="synfonia-yt-player" style={{ position: 'fixed', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }} />
 
       <ConfirmationDialog
         isOpen={showPremiumModal}
