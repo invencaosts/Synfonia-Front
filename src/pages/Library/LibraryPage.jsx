@@ -9,7 +9,6 @@ import {
 import AddToPlaylistMenu from '../../components/Playlist/AddToPlaylistMenu';
 import { musicService } from '../../services/musicService';
 import { authService } from '../../services/authService';
-import { ytMusicAuthService } from '../../services/ytMusicAuthService';
 import { useAudio } from '../../hooks/useAudio';
 import { useTheme } from '../../hooks/useTheme';
 import { useImport } from '../../hooks/useImport';
@@ -22,16 +21,7 @@ const LibraryPage = () => {
     isFavoritesLoaded, refreshFavorites, toggleFavorite
   } = useAudio();
   const { viewMode, toggleViewMode } = useTheme();
-  const { isImporting, importSavedTracks, importYoutubeLikedSongs } = useImport();
-
-  const [isYoutubeConnected, setIsYoutubeConnected] = useState(() => ytMusicAuthService.isConnected());
-  const [showClearYoutubeConfirm, setShowClearYoutubeConfirm] = useState(false);
-
-  useEffect(() => {
-    const handleChange = () => setIsYoutubeConnected(ytMusicAuthService.isConnected());
-    window.addEventListener('ytmusicAuthChange', handleChange);
-    return () => window.removeEventListener('ytmusicAuthChange', handleChange);
-  }, []);
+  const { isImporting, importSavedTracks } = useImport();
 
   const [backendSongs, setBackendSongs] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -71,10 +61,6 @@ const LibraryPage = () => {
        (item.music?.uri && item.music.uri.includes('spotify')) ||
        item.music?.isSpotify === true
      );
-  }, [backendSongs]);
-
-  const hasYoutubeTracks = useMemo(() => {
-     return backendSongs.some(item => item.music?.source === 'YOUTUBE_MUSIC');
   }, [backendSongs]);
 
   // Busca PAGINADA do servidor
@@ -135,39 +121,6 @@ const LibraryPage = () => {
     } catch (err) {
       console.error("Import error:", err);
       setMessage({ type: 'error', text: 'Falha na importação.' });
-    }
-  };
-
-  const handleImportYoutube = async () => {
-    if (!isYoutubeConnected || isImporting) return;
-
-    try {
-      await importYoutubeLikedSongs();
-      await refreshFavorites(true);
-      await fetchLibraryPage(0);
-      setCurrentPage(1);
-      setMessage({ type: 'success', text: 'Importação concluída com sucesso!' });
-    } catch (err) {
-      console.error("Import error:", err);
-      setMessage({ type: 'error', text: 'Falha na importação.' });
-    }
-  };
-
-  const handleClearYoutube = async () => {
-    if (isImporting || isSyncing) return;
-    setShowClearYoutubeConfirm(false);
-    setIsSyncing(true);
-    try {
-      const deletedCount = await musicService.deleteBySource('YOUTUBE_MUSIC');
-      await refreshFavorites(true);
-      await fetchLibraryPage(0);
-      setCurrentPage(1);
-      setMessage({ type: 'success', text: `${deletedCount} músicas removidas.` });
-    } catch (err) {
-      console.error("Clear error:", err);
-      setMessage({ type: 'error', text: 'Falha ao limpar biblioteca.' });
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -324,34 +277,6 @@ const LibraryPage = () => {
                   disabled={isImporting}
                   className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
                   title="Remover todas as músicas do Spotify da sua biblioteca"
-                >
-                  <Trash2 size={14} className={isImporting ? 'animate-pulse' : ''} />
-                  <span className="hidden sm:inline">Limpar Sincronia</span>
-                </button>
-              </div>
-            )}
-
-            {(isYoutubeConnected || hasYoutubeTracks) && (
-              <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
-                {isYoutubeConnected && !hasYoutubeTracks && (
-                  <>
-                    <button
-                      onClick={handleImportYoutube}
-                      disabled={isImporting}
-                      className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all disabled:opacity-50"
-                      title="Importar curtidas do YouTube Music para sua biblioteca local"
-                    >
-                      <Download size={14} className={isImporting ? 'animate-bounce' : ''} />
-                      <span className="hidden sm:inline">Importar do YouTube Music</span>
-                    </button>
-                    <div className="w-px h-4 bg-white/10" />
-                  </>
-                )}
-                <button
-                  onClick={() => setShowClearYoutubeConfirm(true)}
-                  disabled={isImporting}
-                  className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
-                  title="Remover todas as músicas do YouTube Music da sua biblioteca"
                 >
                   <Trash2 size={14} className={isImporting ? 'animate-pulse' : ''} />
                   <span className="hidden sm:inline">Limpar Sincronia</span>
@@ -823,16 +748,6 @@ const LibraryPage = () => {
                       Importar do Spotify
                     </button>
                 )}
-                {isYoutubeConnected && !hasYoutubeTracks && (
-                    <button
-                      onClick={handleImportYoutube}
-                      disabled={isImporting}
-                      className="flex items-center gap-3 bg-red-600 text-white font-bold py-4 px-8 rounded-2xl hover:bg-red-600/90 transition-all shadow-lg shadow-red-600/20 active:scale-95"
-                    >
-                      <Download size={22} className={isImporting ? 'animate-bounce' : ''} />
-                      Importar do YouTube Music
-                    </button>
-                )}
               </div>
             </div>
           )}
@@ -939,55 +854,6 @@ const LibraryPage = () => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showClearYoutubeConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-zinc-950 border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl"
-            >
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-2">
-                  <AlertTriangle className="text-red-500" size={32} />
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-white">Limpar Sincronização?</h3>
-                  <p className="text-zinc-500 mt-2">
-                    Isso removerá <span className="text-red-500 font-bold">TODAS</span> as músicas importadas do YouTube Music da sua biblioteca. As demais músicas não serão afetadas.
-                  </p>
-                </div>
-
-                <div className="flex flex-col w-full gap-3 pt-4">
-                  <button
-                    onClick={handleClearYoutube}
-                    disabled={isSyncing}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {isSyncing ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : "Sim, confirmar limpeza"}
-                  </button>
-                  <button
-                    onClick={() => setShowClearYoutubeConfirm(false)}
-                    disabled={isSyncing}
-                    className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold py-4 rounded-2xl transition-all border border-white/5 disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
 
 
