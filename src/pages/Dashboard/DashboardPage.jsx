@@ -5,6 +5,7 @@ import { spotifyService } from '../../services/spotifyService';
 import { authService } from '../../services/authService';
 import { useAudio } from '../../hooks/useAudio';
 import { useTheme } from '../../hooks/useTheme';
+import { isPreviewOnlyTrack } from '../../utils/musicSource';
 
 const DashboardPage = () => {
   const { playTrack, currentTrack, isPlaying, addToQueue, playNext } = useAudio();
@@ -252,8 +253,10 @@ const DashboardPage = () => {
                       <div className="absolute top-1.5 left-1.5 flex gap-1">
                         {(item.music?.isSpotify || item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify'))) ? (
                           <span className="bg-[#1DB954]/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Spotify</span>
+                        ) : item.music?.source === 'YOUTUBE_MUSIC' ? (
+                          <span className="bg-red-600/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">YouTube</span>
                         ) : (
-                          <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Synfonia</span>
+                          <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{item.music?.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
                         )}
                       </div>
 
@@ -280,7 +283,7 @@ const DashboardPage = () => {
                    </div>
                    <h3 className="font-bold text-xs md:text-sm truncate text-song group-hover:opacity-80 transition-all music-title-wrap" title={item.music?.nome}>
                       <span className="title-text truncate">{item.music?.nome}</span>
-                      {!((item.music?.trackId && String(item.music.trackId).length > 15) || (item.music?.id && String(item.music.id).length > 20) || item.music?.isSpotify || item.music?.trackUri || item.music?.uri) && <span className="music-badge-preview">(Preview)</span>}
+                      {isPreviewOnlyTrack(item.music?.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
                    </h3>
                    <p className="text-dim text-[10px] md:text-xs truncate text-center mt-0.5">{item.music?.artista}</p>
                 </div>
@@ -355,6 +358,8 @@ const DashboardPage = () => {
                       <div className="absolute top-2 left-2 flex gap-1">
                         {(music.isSpotify || music.source === 'SPOTIFY' || (music.uri && music.uri.includes('spotify'))) ? (
                           <span className="bg-[#1DB954]/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Spotify</span>
+                        ) : music.source === 'YOUTUBE_MUSIC' ? (
+                          <span className="bg-red-600/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-sm border border-white/10 uppercase tracking-tighter">YouTube</span>
                         ) : (
                           <span className="bg-brand/90 text-brand-contrast text-[8px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{music.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
                         )}
@@ -403,7 +408,7 @@ const DashboardPage = () => {
                     <div className="space-y-1 flex-1 min-w-0">
                       <h3 className="font-bold text-xs md:text-sm truncate text-song group-hover:opacity-80 transition-all music-title-wrap" title={music.nome}>
                         <span className="title-text truncate">{music.nome}</span>
-                        {!((music.trackId && String(music.trackId).length > 15) || (music.id && String(music.id).length > 20) || music.isSpotify || music.trackUri || music.uri) && <span className="music-badge-preview">(Preview)</span>}
+                        {isPreviewOnlyTrack(music.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
                       </h3>
                       <p className="text-dim text-[10px] md:text-xs truncate transition-colors">
                         {music.artista}
@@ -461,10 +466,12 @@ const DashboardPage = () => {
                         <span className="truncate">{music.nome}</span>
                         {(music.isSpotify || music.source === 'SPOTIFY' || (music.uri && music.uri.includes('spotify'))) ? (
                           <span className="bg-[#1DB954]/20 text-[#1DB954] text-[8px] font-black px-1.5 py-0.5 rounded-md border border-[#1DB954]/20 uppercase tracking-tighter shrink-0">Spotify</span>
+                        ) : music.source === 'YOUTUBE_MUSIC' ? (
+                          <span className="bg-red-500/20 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase tracking-tighter shrink-0">YouTube</span>
                         ) : (
                           <span className="bg-brand/10 text-brand text-[8px] font-black px-1.5 py-0.5 rounded-md border border-brand/20 uppercase tracking-tighter shrink-0">{music.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
                         )}
-                        {!((music.trackId && String(music.trackId).length > 15) || (music.id && String(music.id).length > 20) || music.isSpotify || music.trackUri || music.uri) && <span className="music-badge-preview">(Preview)</span>}
+                        {isPreviewOnlyTrack(music.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
 
                       </h3>
                       <div className="flex items-center gap-2 text-[10px] md:text-xs">
