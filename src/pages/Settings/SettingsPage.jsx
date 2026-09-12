@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useTheme, hexToRgb, getContrastColor, getLegibleColor, hasPoorContrast } from '../../context/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
+import { hexToRgb, getContrastColor, getLegibleColor, hasPoorContrast } from '../../utils/colorUtils';
 import { useAudio } from '../../hooks/useAudio';
 import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
-import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut } from 'lucide-react';
+import { spotifyService } from '../../services/spotifyService';
+import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut, Search } from 'lucide-react';
 import ColorPicker from '../../components/ui/ColorPicker';
 import Button from '../../components/ui/Button';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
@@ -30,6 +32,8 @@ const SettingsPage = () => {
   const [user, setUser] = useState(authService.getCurrentUser());
   const [showPersonalName, setShowPersonalName] = useState(user?.showPersonalName ?? true);
   const [showSpotifyActivity, setShowSpotifyActivity] = useState(user?.showSpotifyActivity ?? true);
+  const [preferredMusicSource, setPreferredMusicSource] = useState(user?.preferredMusicSource || 'ITUNES');
+  const [savingMusicSource, setSavingMusicSource] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
@@ -121,6 +125,53 @@ const SettingsPage = () => {
     connectSpotify, disconnectSpotify, isSpotifyConnected,
     isSpotifySyncEnabled, setIsSpotifySyncEnabled
   } = useAudio();
+
+  useEffect(() => {
+    if (!isSpotifyConnected || user?.socialLinks?.spotify) return;
+
+    const syncSpotifyLink = async () => {
+      const token = spotifyService.getAccessToken();
+      const profile = await spotifyService.getUserProfile(token);
+      if (!profile) return;
+
+      const handle = profile.display_name || profile.id;
+      const updatedSocialLinks = { ...user?.socialLinks, spotify: handle };
+
+      try {
+        const updatedUser = await userService.updateProfile({ socialLinks: updatedSocialLinks });
+        const merged = { ...user, ...updatedUser };
+        localStorage.setItem('user', JSON.stringify(merged));
+        setUser(merged);
+        window.dispatchEvent(new Event('userUpdate'));
+      } catch (err) {
+        console.error('Erro ao sincronizar link do Spotify no perfil:', err);
+      }
+    };
+
+    syncSpotifyLink();
+  }, [isSpotifyConnected, user]);
+
+  const handleMusicSourceChange = async (source) => {
+    if (source === preferredMusicSource || savingMusicSource) return;
+    if (source === 'SPOTIFY' && !isSpotifyConnected) return;
+
+    setSavingMusicSource(true);
+    const previous = preferredMusicSource;
+    setPreferredMusicSource(source);
+
+    try {
+      const updatedUser = await userService.updateProfile({ preferredMusicSource: source });
+      const merged = { ...user, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(merged));
+      setUser(merged);
+      window.dispatchEvent(new Event('userUpdate'));
+    } catch (err) {
+      console.error('Erro ao salvar fonte de busca preferida:', err);
+      setPreferredMusicSource(previous);
+    } finally {
+      setSavingMusicSource(false);
+    }
+  };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const maxFontSize = isMobile ? 2 : 4;
@@ -404,6 +455,53 @@ const SettingsPage = () => {
               Sem Spotify, apenas prévias de 30 segundos serão reproduzidas.
             </p>
           )}
+        </div>
+
+        <div className="p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) space-y-4">
+          <div className="flex items-center gap-3">
+            <Search size={20} className="text-dim" />
+            <div className="flex flex-col">
+              <span className="font-bold text-main">Fonte de Busca Padrão</span>
+              <span className="text-[10px] text-dim">Escolha de onde as músicas e álbuns são buscados</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              onClick={() => handleMusicSourceChange('ITUNES')}
+              className={`py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 border ${
+                preferredMusicSource === 'ITUNES'
+                  ? 'bg-brand/10 text-brand-legible border-brand/30'
+                  : 'bg-(--bg-side) text-dim border-(--border-subtle) hover:text-main'
+              }`}
+            >
+              iTunes
+            </button>
+            <button
+              onClick={() => handleMusicSourceChange('YOUTUBE_MUSIC')}
+              className={`py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 border ${
+                preferredMusicSource === 'YOUTUBE_MUSIC'
+                  ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                  : 'bg-(--bg-side) text-dim border-(--border-subtle) hover:text-main'
+              }`}
+            >
+              YouTube Music
+            </button>
+            <button
+              onClick={() => handleMusicSourceChange('SPOTIFY')}
+              disabled={!isSpotifyConnected}
+              title={!isSpotifyConnected ? 'Conecte ao Spotify primeiro' : ''}
+              className={`py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 border ${
+                preferredMusicSource === 'SPOTIFY'
+                  ? 'bg-[#1DB954]/10 text-[#1DB954] border-[#1DB954]/30'
+                  : !isSpotifyConnected
+                    ? 'bg-(--bg-side) text-dim border-(--border-subtle) opacity-50 cursor-not-allowed'
+                    : 'bg-(--bg-side) text-dim border-(--border-subtle) hover:text-main'
+              }`}
+            >
+              Spotify
+            </button>
+          </div>
         </div>
       </section>
 
