@@ -64,6 +64,7 @@ export const AudioProvider = ({ children }) => {
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(-1);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [ytUnplayableWarning, setYtUnplayableWarning] = useState(false);
   const [playbackMode, setPlaybackMode] = useState('NATURAL');
   const [isSpotifySyncEnabled, setIsSpotifySyncEnabled] = useState(() => {
     return localStorage.getItem('synfonia-spotify-sync') !== 'false';
@@ -299,7 +300,25 @@ export const AudioProvider = ({ children }) => {
           resolve();
           return;
         }
-        ytPlayerRef.current = new window.YT.Player('synfonia-yt-player', {
+
+        // Cria o container por fora do React (document.body direto). O
+        // YouTube substitui esse elemento por um <iframe> próprio assim que
+        // o player inicializa — se o div fosse renderizado via JSX, o React
+        // perderia a referência real do nó e quebrava (insertBefore/
+        // removeChild) na primeira renderização seguinte.
+        let container = document.getElementById('synfonia-yt-player');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'synfonia-yt-player';
+          container.style.position = 'fixed';
+          container.style.width = '0';
+          container.style.height = '0';
+          container.style.overflow = 'hidden';
+          container.style.pointerEvents = 'none';
+          document.body.appendChild(container);
+        }
+
+        ytPlayerRef.current = new window.YT.Player(container, {
           height: '0',
           width: '0',
           playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1 },
@@ -310,6 +329,18 @@ export const AudioProvider = ({ children }) => {
               console.error('YouTube Player Error:', event.data);
               setIsBuffering(false);
               setIsPlaying(false);
+              // 100 = vídeo removido/privado; 101/150 = dono não permite embed.
+              // Sem isso o player ficava travado pra sempre nesses vídeos.
+              if ([100, 101, 150].includes(event.data)) {
+                setYtUnplayableWarning(true);
+                setTimeout(() => {
+                  setYtUnplayableWarning(false);
+                  if (isAutoplayRef.current) {
+                    const qi = queueIndexRef.current;
+                    playFromQueueRef.current?.(qi + 1);
+                  }
+                }, 2500);
+              }
             }
           }
         });
@@ -1513,7 +1544,14 @@ export const AudioProvider = ({ children }) => {
     }}>
       {children}
 
-      <div id="synfonia-yt-player" style={{ position: 'fixed', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }} />
+      {ytUnplayableWarning && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-100 bg-red-500/95 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4"
+          style={{ bottom: 'calc(var(--player-offset, 0px) + 24px)' }}
+        >
+          Essa música não pode ser reproduzida pelo YouTube
+        </div>
+      )}
 
       <ConfirmationDialog
         isOpen={showPremiumModal}
