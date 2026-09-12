@@ -267,7 +267,7 @@ const AudioPlayer = () => {
                       e.stopPropagation();
                       setIsQueueOpen(true);
                     }}
-                    className="text-dim hover:text-brand transition-colors shrink-0 flex items-center justify-center p-1"
+                    className="text-dim hover:text-brand transition-all active:scale-90 shrink-0 self-center flex items-center justify-center p-2"
                     title="Ver fila"
                   >
                     <ListMusic size={20} />
