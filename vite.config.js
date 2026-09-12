@@ -15,6 +15,14 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        // Backend valida o header Origin (CORS_ALLOWED_ORIGINS). O proxy do Vite
+        // repassa o Origin real do navegador (ex: http://192.168.x.x:5173), que
+        // muda conforme a rede e não está na allowlist. Como a chamada já é
+        // same-origin do ponto de vista do navegador, forçamos aqui o Origin
+        // "canônico" já liberado no backend.
+        headers: {
+          Origin: 'http://localhost:5173',
+        },
       }
     }
   }
