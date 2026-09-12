@@ -3,7 +3,6 @@ import { Plus, ListMusic, Search, Music2, MoreHorizontal, Play, Pause, Globe, Lo
 import { playlistService } from '../../services/playlistService';
 import { musicService } from '../../services/musicService';
 import { spotifyService } from '../../services/spotifyService';
-import { ytMusicAuthService } from '../../services/ytMusicAuthService';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
@@ -29,10 +28,6 @@ const PlaylistsPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [spotifyPlaylists, setSpotifyPlaylists] = useState([]);
   const [loadingSpotify, setLoadingSpotify] = useState(false);
-  const [showYoutubeImportModal, setShowYoutubeImportModal] = useState(false);
-  const [youtubePlaylists, setYoutubePlaylists] = useState([]);
-  const [loadingYoutube, setLoadingYoutube] = useState(false);
-  const [isYoutubeConnected, setIsYoutubeConnected] = useState(() => ytMusicAuthService.isConnected());
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedForExport, setSelectedForExport] = useState([]);
   const [newPlaylist, setNewPlaylist] = useState({
@@ -74,13 +69,7 @@ const PlaylistsPage = () => {
     return playlistTracks.filter(t => t && t.source !== 'SPOTIFY' && !(t.uri && t.uri.includes('spotify')));
   }, [playlistTracks, spotifyToken]);
 
-  const { importPlaylist, importAllPlaylists, importYoutubePlaylist, importAllYoutubePlaylists, lastImportedPlaylist, exportPlaylists } = useImport();
-
-  useEffect(() => {
-    const handleChange = () => setIsYoutubeConnected(ytMusicAuthService.isConnected());
-    window.addEventListener('ytmusicAuthChange', handleChange);
-    return () => window.removeEventListener('ytmusicAuthChange', handleChange);
-  }, []);
+  const { importPlaylist, importAllPlaylists, lastImportedPlaylist, exportPlaylists } = useImport();
 
   useEffect(() => {
     fetchPlaylists();
@@ -323,31 +312,6 @@ const PlaylistsPage = () => {
     setShowImportModal(false);
   };
 
-  const handleOpenYoutubeImportModal = async () => {
-    setShowYoutubeImportModal(true);
-    setLoadingYoutube(true);
-    try {
-      const data = await ytMusicAuthService.getPlaylists();
-      setYoutubePlaylists(data || []);
-    } catch (err) {
-      console.error("Erro ao carregar playlists do YouTube Music:", err);
-      setError("Falha ao carregar playlists do YouTube Music.");
-    } finally {
-      setLoadingYoutube(false);
-    }
-  };
-
-  const handleImportYoutubePlaylist = (playlist) => {
-    importYoutubePlaylist(playlist);
-    setShowYoutubeImportModal(false);
-  };
-
-  const handleImportAllYoutube = () => {
-    if (youtubePlaylists.length === 0) return;
-    importAllYoutubePlaylists(youtubePlaylists);
-    setShowYoutubeImportModal(false);
-  };
-
   const handleImportBySpecificId = async () => {
     let cleanId = importId.trim();
     // Extração robusta do ID (Regex para 22 caracteres alfanuméricos após 'playlist/')
@@ -560,16 +524,6 @@ const PlaylistsPage = () => {
                   <span className="truncate">Exportar</span>
                 </button>
               </>
-            )}
-
-            {isYoutubeConnected && (
-              <button
-                onClick={handleOpenYoutubeImportModal}
-                className="flex-1 flex items-center justify-center gap-2 bg-black/5 dark:bg-white/5 text-dim font-bold py-3 px-3 rounded-2xl border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 hover:text-main transition-all active:scale-95 whitespace-nowrap text-xs sm:text-base min-w-0"
-              >
-                <Download size={18} className="shrink-0" />
-                <span className="truncate">Importar YT Music</span>
-              </button>
             )}
 
             <button
@@ -1410,106 +1364,6 @@ const PlaylistsPage = () => {
                   </div>
                 )}
               </>
-            )}
-          </div>
-        </Modal>
-      </div>
-
-      {/* Modal de Importação do YouTube Music */}
-      <div style={{ '--player-offset': '110px' }}>
-        <Modal
-          isOpen={showYoutubeImportModal}
-          onClose={() => setShowYoutubeImportModal(false)}
-          title="Importar do YouTube Music"
-          maxWidth={viewMode === 'grid' ? 'max-w-4xl' : 'max-w-md'}
-        >
-          <div className="space-y-6">
-            {loadingYoutube ? (
-              <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
-                <p className="text-zinc-500 font-medium">Buscando suas playlists no YouTube Music...</p>
-              </div>
-            ) : youtubePlaylists.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-1">
-                      <button
-                        onClick={() => viewMode !== 'grid' && toggleViewMode()}
-                        className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-brand text-brand-contrast shadow-sm' : 'text-dim hover:text-main'}`}
-                        title="Visualização em Grade"
-                      >
-                        <LayoutGrid size={14} />
-                      </button>
-                      <button
-                        onClick={() => viewMode !== 'list' && toggleViewMode()}
-                        className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-brand text-brand-contrast shadow-sm' : 'text-dim hover:text-main'}`}
-                        title="Visualização em Lista"
-                      >
-                        <List size={14} />
-                      </button>
-                    </div>
-                    <p className="text-[10px] font-bold text-dim uppercase tracking-widest">{youtubePlaylists.length} playlists</p>
-                  </div>
-                  <button
-                    onClick={handleImportAllYoutube}
-                    className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-red-600/90 transition-all shadow-lg shadow-red-600/20"
-                  >
-                    Importar Tudo
-                  </button>
-                </div>
-
-                <div className={`max-h-[420px] overflow-y-auto pr-2 custom-scrollbar ${viewMode === 'grid' ? 'grid grid-cols-2 lg:grid-cols-3 gap-3' : 'space-y-2'}`}>
-                  {youtubePlaylists.map((yp) => (
-                    <div key={yp.id} className={`${viewMode === 'grid'
-                      ? 'bg-white/5 border border-transparent hover:border-red-500/30 rounded-2xl p-3 text-center flex flex-col items-center group'
-                      : 'flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-transparent hover:border-white/10 transition-all group'}`}>
-
-                      <div className={`${viewMode === 'grid' ? 'w-full aspect-square mb-3' : 'w-12 h-12'} bg-zinc-800 rounded-xl overflow-hidden shrink-0 relative`}>
-                        {yp.capaUrl ? (
-                          <img src={yp.capaUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Music2 className="text-zinc-600" size={viewMode === 'grid' ? 32 : 20} />
-                          </div>
-                        )}
-                        {viewMode === 'grid' && (
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              onClick={() => handleImportYoutubePlaylist(yp)}
-                              className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all"
-                            >
-                              <Plus size={20} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className={`${viewMode === 'grid' ? 'w-full' : 'flex-1 min-w-0'}`}>
-                        <p className="text-sm font-bold text-main truncate">{yp.nome}</p>
-                        <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">{yp.totalFaixas || 0} músicas</p>
-                      </div>
-
-                      {viewMode === 'list' && (
-                        <button
-                          onClick={() => handleImportYoutubePlaylist(yp)}
-                          className="p-2.5 bg-black/5 dark:bg-white/5 text-dim rounded-xl hover:bg-red-600 hover:text-white transition-all group-hover:bg-black/10 dark:group-hover:bg-white/10"
-                          title="Importar esta playlist"
-                        >
-                          <Plus size={18} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="p-4 bg-zinc-800/50 rounded-3xl">
-                  <AlertCircle className="text-zinc-600" size={32} />
-                </div>
-                <p className="text-zinc-500 max-w-xs">Nenhuma playlist encontrada na sua conta do YouTube Music.</p>
-              </div>
             )}
           </div>
         </Modal>

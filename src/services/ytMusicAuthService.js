@@ -38,19 +38,4 @@ export const ytMusicAuthService = {
     const response = await api.post('/ytmusic/me/account');
     return response.data; // { accountName, channelHandle, accountPhotoUrl }
   },
-
-  getPlaylists: async () => {
-    const response = await api.post('/ytmusic/me/playlists');
-    return response.data;
-  },
-
-  getPlaylistTracks: async (playlistId) => {
-    const response = await api.post(`/ytmusic/me/playlists/${playlistId}/tracks`);
-    return response.data;
-  },
-
-  getLikedSongs: async () => {
-    const response = await api.post('/ytmusic/me/liked-songs');
-    return response.data;
-  },
 };
