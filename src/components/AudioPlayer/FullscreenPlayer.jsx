@@ -28,7 +28,6 @@ const FullscreenPlayer = ({ onClose }) => {
   } = useAudio();
 
   const [seekProgress, setSeekProgress] = useState(null);
-  const [isChangingVolume, setIsChangingVolume] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [direction, setDirection] = useState(1);

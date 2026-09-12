@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Plus, ListMusic, Search, Music2, MoreHorizontal, Play, Pause, Globe, Lock, Smile, Frown, CloudRain, Moon, Sparkles, Loader2, AlertCircle, ArrowLeft, Trash2, Settings2, Calendar, Camera, X, LayoutGrid, List, ChevronRight, Shuffle, Download, Upload, Check } from 'lucide-react';
 import { playlistService } from '../../services/playlistService';
 import { musicService } from '../../services/musicService';
-import { authService } from '../../services/authService';
 import { spotifyService } from '../../services/spotifyService';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { useAudio } from '../../hooks/useAudio';
-import { useImport } from '../../context/ImportContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useImport } from '../../hooks/useImport';
+import { useTheme } from '../../hooks/useTheme';
 
 const VIBE_PRESETS = [
   { icon: Smile, label: 'Feliz', value: 'feliz' },
@@ -61,8 +60,7 @@ const PlaylistsPage = () => {
     playNext, 
     playPlaylist,
     spotifyToken,
-    isSpotifyConnected,
-    isSpotifySyncEnabled
+    isSpotifyConnected
   } = useAudio();
 
   const filteredPlaylistTracks = useMemo(() => {
@@ -168,7 +166,7 @@ const PlaylistsPage = () => {
         try {
           const base64 = canvas.toDataURL('image/jpeg', 0.8);
           resolve(base64);
-        } catch (e) {
+        } catch {
           reject(new Error('Canvas CORS error'));
         }
       };
@@ -423,13 +421,7 @@ const PlaylistsPage = () => {
     }
   };
 
-  useEffect(() => {
-    if (selectedPlaylist) {
-      fetchPlaylistTracks();
-    }
-  }, [selectedPlaylist]);
-
-  const fetchPlaylistTracks = async () => {
+  const fetchPlaylistTracks = useCallback(async () => {
     if (!selectedPlaylist.trackIds || selectedPlaylist.trackIds.length === 0) {
       setPlaylistTracks([]);
       return;
@@ -445,7 +437,13 @@ const PlaylistsPage = () => {
     } finally {
       setLoadingTracks(false);
     }
-  };
+  }, [selectedPlaylist]);
+
+  useEffect(() => {
+    if (selectedPlaylist) {
+      fetchPlaylistTracks();
+    }
+  }, [selectedPlaylist, fetchPlaylistTracks]);
 
   const handleRemoveTrack = async (trackId) => {
     try {

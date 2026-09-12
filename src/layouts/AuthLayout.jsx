@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useOutlet, Link } from 'react-router-dom';
 
@@ -7,11 +7,14 @@ const AuthLayout = () => {
   const outlet = useOutlet();
   const isLogin = location.pathname === '/login';
   const isRecovery = location.pathname === '/forgot-password' || location.pathname === '/reset-password';
-  const [direction, setDirection] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [prevIsLogin, setPrevIsLogin] = useState(isLogin);
 
-  useEffect(() => {
+  // Ajuste de estado durante o render (evita o flash de um efeito rodando após o paint)
+  if (isLogin !== prevIsLogin) {
+    setPrevIsLogin(isLogin);
     setDirection(isLogin ? 1 : -1);
-  }, [isLogin]);
+  }
 
   const bgColors = {
     login: '#121214',    // Fully opaque Zinc 900

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import LoginPage from './pages/Login/LoginPage';
 import RegisterPage from './pages/Login/RegisterPage';
@@ -20,7 +20,6 @@ import { authService } from './services/authService';
 import CookieConsent from './components/ui/CookieConsent';
 
 const AppContent = () => {
-    const location = useLocation();
     const [isLoading, setIsLoading] = useState(true);
   
     useEffect(() => {
