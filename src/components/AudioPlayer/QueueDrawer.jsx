@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Music, ListMusic, Lock } from 'lucide-react';
 import { useAudio } from '../../hooks/useAudio';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 const QueueDrawer = ({ isOpen, onClose }) => {
   const { 
