@@ -4,7 +4,7 @@ import { musicService } from '../../services/musicService';
 import { spotifyService } from '../../services/spotifyService';
 import { authService } from '../../services/authService';
 import { useAudio } from '../../hooks/useAudio';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 const DashboardPage = () => {
   const { playTrack, currentTrack, isPlaying, addToQueue, playNext } = useAudio();
@@ -24,6 +24,9 @@ const DashboardPage = () => {
 
   const user = authService.getCurrentUser();
   const spotifyToken = spotifyService.getAccessToken();
+  const preferredSource = user?.preferredMusicSource || 'ITUNES';
+  const useSpotify = preferredSource === 'SPOTIFY' && !!spotifyToken;
+  const backendSource = preferredSource === 'YOUTUBE_MUSIC' ? 'YOUTUBE_MUSIC' : 'ITUNES';
 
   const filteredHistory = useMemo(() => {
     return history;
@@ -89,40 +92,6 @@ const DashboardPage = () => {
     { id: 'album', label: 'Álbum' },
   ];
 
-  const handleQuickSearch = (term, type) => {
-    setSearchTerm(term);
-    setSearchType(type);
-    setLoading(true);
-    setHasSearched(true);
-    setMessage(null);
-    setCurrentPage(1);
-
-    const spotifyToken = spotifyService.getAccessToken();
-    if (spotifyToken) {
-      spotifyService.search(term, type, 0).then(data => {
-        setMusics(data.items || []);
-        setTotalItems(data.total || 0);
-        setHasSearched(true);
-        setLoading(false);
-      }).catch(err => {
-        console.error('Quick search error:', err);
-        setLoading(false);
-      });
-    } else {
-      musicService.search(term, type).then(data => {
-        // Filtro para remover músicas do Spotify se não estiver logado
-        const filtered = (data || []).filter(m => m.source !== 'SPOTIFY' && !(m.uri && m.uri.includes('spotify')));
-        setMusics(filtered);
-        setTotalItems(filtered.length);
-        setHasSearched(true);
-        setLoading(false);
-      }).catch(err => {
-        console.error('Quick search error:', err);
-        setLoading(false);
-      });
-    }
-  };
-
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
@@ -133,12 +102,12 @@ const DashboardPage = () => {
     setCurrentPage(1);
 
     try {
-      if (spotifyToken) {
+      if (useSpotify) {
         const results = await spotifyService.search(searchTerm, searchType, 0);
         setMusics(results.items || []);
         setTotalItems(results.total || 0);
       } else {
-        const results = await musicService.search(searchTerm, searchType);
+        const results = await musicService.search(searchTerm, searchType, backendSource);
         // Filtro para remover músicas do Spotify se não estiver logado
         const filtered = (results || []).filter(m => m.source !== 'SPOTIFY' && !(m.uri && m.uri.includes('spotify')));
         setMusics(filtered);
@@ -153,22 +122,21 @@ const DashboardPage = () => {
   };
 
   // Lógica de Paginação Local
-  const totalPages = Math.ceil((spotifyToken ? totalItems : musics.length) / itemsPerPage);
+  const totalPages = Math.ceil((useSpotify ? totalItems : musics.length) / itemsPerPage);
   const paginatedMusics = useMemo(() => {
-    if (spotifyToken) {
+    if (useSpotify) {
       return musics;
     }
     const start = (currentPage - 1) * itemsPerPage;
     return musics.slice(start, start + itemsPerPage);
-  }, [musics, currentPage, spotifyToken]);
+  }, [musics, currentPage, useSpotify]);
 
   const handlePageChange = async (newPage) => {
     if (newPage === currentPage) return;
     setCurrentPage(newPage);
     document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
 
-    const token = spotifyService.getAccessToken();
-    if (token) {
+    if (useSpotify) {
       setLoading(true);
       try {
         const offset = (newPage - 1) * itemsPerPage;

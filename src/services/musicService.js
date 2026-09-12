@@ -1,9 +1,9 @@
 import api from './api';
 
 export const musicService = {
-  search: async (nome, tipo = 'all') => {
+  search: async (nome, tipo = 'all', source = 'ITUNES') => {
     const response = await api.get('/musicas/search', {
-      params: { nome, tipo }
+      params: { nome, tipo, source }
     });
     return response.data;
   },
