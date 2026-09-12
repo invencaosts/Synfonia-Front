@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { playlistService } from '../services/playlistService';
 import { spotifyService } from '../services/spotifyService';
 import { musicService } from '../services/musicService';
+import { ytMusicAuthService } from '../services/ytMusicAuthService';
 import { ImportContext } from './ImportContextObject';
 
 export const ImportProvider = ({ children }) => {
@@ -228,6 +229,129 @@ export const ImportProvider = ({ children }) => {
     }
   }, []);
 
+  const importYoutubePlaylist = useCallback(async (playlist) => {
+    setIsImporting(true);
+    setImportProgress({ current: 0, total: 1, name: playlist.nome, status: 'fetching' });
+
+    try {
+      const tracks = await ytMusicAuthService.getPlaylistTracks(playlist.id);
+      setImportProgress(prev => ({ ...prev, status: 'importing' }));
+
+      const importData = {
+        name: playlist.nome,
+        capaUrl: playlist.capaUrl,
+        source: 'YOUTUBE_MUSIC',
+        tracks: tracks.map(t => ({
+          id: t.id,
+          name: t.nome,
+          artist: t.artista,
+          album: t.album || '',
+          capaUrl: t.capaUrl,
+          uri: t.uri
+        }))
+      };
+
+      const updatedPlaylist = await playlistService.importData(importData);
+
+      setLastImportedPlaylist(updatedPlaylist);
+      setImportProgress({ current: 1, total: 1, name: playlist.nome, status: 'completed' });
+
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportProgress({ current: 0, total: 0, name: '', status: 'idle' });
+      }, 3000);
+
+      return true;
+    } catch (err) {
+      console.error('[Import YT] Erro na importação da playlist:', err);
+      const serverError = err.response?.data?.detalhe || err.response?.data?.message || err.message;
+      alert(`Falha na importação: ${serverError}`);
+      throw err;
+    }
+  }, []);
+
+  const importAllYoutubePlaylists = useCallback(async (playlists) => {
+    if (playlists.length === 0) return;
+
+    setIsImporting(true);
+
+    for (let i = 0; i < playlists.length; i++) {
+      const playlist = playlists[i];
+      setImportProgress({ current: i + 1, total: playlists.length, name: playlist.nome, status: 'importing' });
+
+      try {
+        const tracks = await ytMusicAuthService.getPlaylistTracks(playlist.id);
+        const importData = {
+          name: playlist.nome,
+          capaUrl: playlist.capaUrl,
+          source: 'YOUTUBE_MUSIC',
+          tracks: tracks.map(t => ({
+            id: t.id,
+            name: t.nome,
+            artist: t.artista,
+            album: t.album || '',
+            capaUrl: t.capaUrl,
+            uri: t.uri
+          }))
+        };
+
+        const updatedPlaylist = await playlistService.importData(importData);
+        setLastImportedPlaylist(updatedPlaylist);
+
+        await new Promise(r => setTimeout(r, 200));
+      } catch (err) {
+        console.error(`[Import YT] Erro ao importar "${playlist.nome}":`, err);
+      }
+    }
+
+    setImportProgress({ current: playlists.length, total: playlists.length, name: 'Todas as playlists', status: 'completed' });
+
+    setTimeout(() => {
+      setIsImporting(false);
+      setImportProgress({ current: 0, total: 0, name: '', status: 'idle' });
+    }, 5000);
+  }, []);
+
+  const importYoutubeLikedSongs = useCallback(async () => {
+    setIsImporting(true);
+    setImportProgress({ current: 0, total: 0, name: 'Músicas Curtidas (YouTube)', status: 'fetching' });
+
+    try {
+      const tracks = await ytMusicAuthService.getLikedSongs();
+      setImportProgress(prev => ({ ...prev, total: tracks.length, status: 'importing' }));
+
+      let importedCount = 0;
+      for (const t of tracks) {
+        try {
+          await musicService.saveToCollection({
+            trackId: t.id,
+            nome: t.nome,
+            artista: t.artista,
+            album: t.album || '',
+            capaUrl: t.capaUrl || '',
+            previewUrl: '',
+            source: 'YOUTUBE_MUSIC'
+          });
+          importedCount++;
+          setImportProgress(prev => ({ ...prev, current: importedCount }));
+        } catch (err) {
+          console.error(`[Import YT] Erro ao salvar "${t.nome}":`, err);
+        }
+      }
+
+      setImportProgress(prev => ({ ...prev, current: importedCount, status: 'completed' }));
+
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportProgress({ current: 0, total: 0, name: '', status: 'idle' });
+      }, 5000);
+    } catch (err) {
+      console.error('[Import YT] Erro fatal na importação de curtidas:', err);
+      setImportProgress(prev => ({ ...prev, status: 'idle' }));
+      setIsImporting(false);
+    }
+  }, []);
+
   const exportPlaylists = useCallback(async (playlistIds, allPlaylists, spotifyToken, urlToBase64Helper) => {
     if (!spotifyToken || playlistIds.length === 0) return;
 
@@ -330,6 +454,9 @@ export const ImportProvider = ({ children }) => {
       importPlaylist,
       importAllPlaylists,
       importSavedTracks,
+      importYoutubePlaylist,
+      importAllYoutubePlaylists,
+      importYoutubeLikedSongs,
       isExporting,
       exportProgress,
       exportPlaylists
