@@ -5,10 +5,13 @@ import { useAudio } from '../../hooks/useAudio';
 import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
 import { spotifyService } from '../../services/spotifyService';
-import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut, Search } from 'lucide-react';
+import { useYoutubeConnect } from '../../hooks/useYoutubeConnect';
+import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut, Search, Youtube } from 'lucide-react';
 import ColorPicker from '../../components/ui/ColorPicker';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
+import YoutubeConnectModal from '../../components/YoutubeConnectModal';
 
 const SettingsPage = () => {
   const {
@@ -34,6 +37,8 @@ const SettingsPage = () => {
   const [showSpotifyActivity, setShowSpotifyActivity] = useState(user?.showSpotifyActivity ?? true);
   const [preferredMusicSource, setPreferredMusicSource] = useState(user?.preferredMusicSource || 'ITUNES');
   const [savingMusicSource, setSavingMusicSource] = useState(false);
+  const { isConnected: isYoutubeConnected, deviceInfo: youtubeDeviceInfo, status: youtubeAuthStatus, connect: handleConnectYoutube, cancel: handleCancelYoutubeConnect, disconnect: disconnectYoutube } = useYoutubeConnect();
+  const [showYoutubeDisconnect, setShowYoutubeDisconnect] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
@@ -154,6 +159,7 @@ const SettingsPage = () => {
   const handleMusicSourceChange = async (source) => {
     if (source === preferredMusicSource || savingMusicSource) return;
     if (source === 'SPOTIFY' && !isSpotifyConnected) return;
+    if (source !== 'ITUNES' && isGuest) return;
 
     setSavingMusicSource(true);
     const previous = preferredMusicSource;
@@ -171,6 +177,11 @@ const SettingsPage = () => {
     } finally {
       setSavingMusicSource(false);
     }
+  };
+
+  const handleDisconnectYoutube = () => {
+    disconnectYoutube();
+    setShowYoutubeDisconnect(false);
   };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -458,6 +469,51 @@ const SettingsPage = () => {
         </div>
 
         <div className="p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Youtube size={20} className={isYoutubeConnected ? 'text-red-500' : 'text-dim'} />
+              <div className="flex flex-col">
+                <span className="font-bold text-main">YouTube Music</span>
+                <span className="text-[10px] text-dim">
+                  {isYoutubeConnected ? 'Conectado — playlists e curtidas disponíveis' : 'Conecte pra acessar suas playlists e curtidas'}
+                </span>
+              </div>
+            </div>
+            {isYoutubeConnected && (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-red-500 uppercase tracking-tight">Ativo</span>
+              </div>
+            )}
+          </div>
+
+          <div
+            className={`w-full ${isGuest && !isYoutubeConnected ? 'cursor-not-allowed' : ''}`}
+            title={isGuest && !isYoutubeConnected ? "Apenas contas registradas" : ""}
+          >
+            <button
+              onClick={isYoutubeConnected ? () => setShowYoutubeDisconnect(true) : (isGuest ? undefined : handleConnectYoutube)}
+              disabled={(isGuest && !isYoutubeConnected) || youtubeAuthStatus === 'waiting'}
+              className={`w-full py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 ${
+                isGuest && !isYoutubeConnected
+                  ? 'bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 opacity-50 pointer-events-none'
+                  : isYoutubeConnected
+                    ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
+                    : 'bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600/20'
+              }`}
+            >
+              {isYoutubeConnected ? 'Desconectar do YouTube Music' : 'Conectar ao YouTube Music'}
+            </button>
+          </div>
+
+          {isGuest && !isYoutubeConnected && (
+            <p className="text-[10px] text-red-400 text-center font-bold">
+              Apenas usuários autenticados com conta podem conectar ao YouTube Music.
+            </p>
+          )}
+        </div>
+
+        <div className="p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) space-y-4">
           <div className="flex items-center gap-3">
             <Search size={20} className="text-dim" />
             <div className="flex flex-col">
@@ -479,10 +535,14 @@ const SettingsPage = () => {
             </button>
             <button
               onClick={() => handleMusicSourceChange('YOUTUBE_MUSIC')}
+              disabled={isGuest}
+              title={isGuest ? 'Apenas contas registradas' : ''}
               className={`py-3 px-4 rounded-2xl font-bold text-sm transition-all duration-300 border ${
                 preferredMusicSource === 'YOUTUBE_MUSIC'
                   ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                  : 'bg-(--bg-side) text-dim border-(--border-subtle) hover:text-main'
+                  : isGuest
+                    ? 'bg-(--bg-side) text-dim border-(--border-subtle) opacity-50 cursor-not-allowed'
+                    : 'bg-(--bg-side) text-dim border-(--border-subtle) hover:text-main'
               }`}
             >
               YouTube Music
@@ -712,6 +772,24 @@ const SettingsPage = () => {
         cancelText="Cancelar"
         variant="danger"
         icon={Music2}
+      />
+
+      <ConfirmationDialog
+        isOpen={showYoutubeDisconnect}
+        onClose={() => setShowYoutubeDisconnect(false)}
+        onConfirm={handleDisconnectYoutube}
+        title="Desconectar do YouTube Music?"
+        message="Você perderá acesso às suas playlists e músicas curtidas até conectar novamente."
+        confirmText="Desconectar"
+        cancelText="Cancelar"
+        variant="danger"
+        icon={Youtube}
+      />
+
+      <YoutubeConnectModal
+        deviceInfo={youtubeDeviceInfo}
+        status={youtubeAuthStatus}
+        onClose={handleCancelYoutubeConnect}
       />
 
       <ConfirmationDialog
