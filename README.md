@@ -35,7 +35,7 @@ O Synfonia foi desenhado para impressionar desde o primeiro clique:
 ---
 
 ## 🚀 Como Iniciar
-1. Certifique-se de ter o **Node.js 20+** instalado.
+1. Certifique-se de ter o **Node.js 22+** instalado.
 2. Configure as **Variáveis de Ambiente** no arquivo `.env`:
    ```env
    VITE_API_URL=http://localhost:8080/api/v1
@@ -50,6 +50,37 @@ O Synfonia foi desenhado para impressionar desde o primeiro clique:
    ```bash
    npm run dev
    ```
+
+## 📱 Aplicativos Android e iOS
+
+Os projetos nativos usam Capacitor e reaproveitam a build web do diretório `dist`.
+
+1. Gere a build e sincronize os arquivos e plugins com as duas plataformas:
+   ```bash
+   npm run mobile:sync
+   ```
+2. Abra a plataforma desejada:
+   ```bash
+   npx cap open android
+   npx cap open ios
+   ```
+
+No Android, o Android Studio e o emulador são opcionais. Para compilar e testar
+pela linha de comando em um aparelho físico, instale o JDK 21, o Android SDK
+(Platform e Build Tools 36) e o `adb`. Configure o ambiente e confirme que o
+aparelho, com a depuração USB autorizada, aparece como `device`:
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+export ANDROID_HOME="$HOME/.local/share/android-sdk"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+adb devices
+npx cap run android
+```
+
+O Android Studio continua sendo útil para usar emuladores e depurar o código
+nativo. O projeto iOS pode ser sincronizado em outros sistemas, mas sua
+compilação e execução exigem macOS com Xcode.
 
 ---
 *Construído para amantes de música que valorizam cada detalhe visual.*

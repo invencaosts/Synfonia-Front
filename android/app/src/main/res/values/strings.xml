@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Synfonia</string>
+    <string name="title_activity_main">Synfonia</string>
+    <string name="package_name">com.synfonia.app</string>
+    <string name="custom_url_scheme">com.synfonia.app</string>
+</resources>
