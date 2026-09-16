@@ -4,7 +4,11 @@ import { spotifyService } from './spotifyService';
 export const authService = {
   login: async (email, senha) => {
     const response = await api.post('/auth/login', { email, senha });
-    // O token agora é armazenado via Cookie HttpOnly gerenciado pelo browser
+    // Web: o token é armazenado via Cookie HttpOnly gerenciado pelo browser.
+    // App nativo: o backend devolve o token no corpo (ver X-Client-Platform em api.js).
+    if (response.data.token) {
+      localStorage.setItem('auth_token', response.data.token);
+    }
     if (response.data.usuario) {
       localStorage.setItem('user', JSON.stringify(response.data.usuario));
     }
@@ -19,6 +23,7 @@ export const authService = {
   logout: async () => {
     // 1. Limpeza IMEDIATA do estado local para UX instantânea
     localStorage.removeItem('user');
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('isGuest');
     localStorage.removeItem('synfonia-theme');
     localStorage.removeItem('synfonia-accent');

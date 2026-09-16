@@ -1,5 +1,10 @@
 {
   "appId": "com.synfonia.app",
   "appName": "Synfonia",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["10.148.10.156"]
+  }
 }
