@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Minimize2, Shuffle, Repeat, Loader2, Heart, ChevronDown } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Shuffle, Repeat, Loader2, Heart, ChevronDown } from 'lucide-react';
 import { useAudio } from '../../hooks/useAudio';
 import MarqueeText from '../ui/MarqueeText';
 
@@ -28,7 +28,6 @@ const FullscreenPlayer = ({ onClose }) => {
   } = useAudio();
 
   const [seekProgress, setSeekProgress] = useState(null);
-  const [isHovered, setIsHovered] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [direction, setDirection] = useState(1);
 
@@ -210,44 +209,16 @@ const FullscreenPlayer = ({ onClose }) => {
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-center z-50">
         <motion.button
-          animate={{
-            opacity: showControls ? 1 : 0,
-            scale: showControls ? 1 : 0.8
-          }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          initial={{ opacity: 1, scale: 1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={(e) => {
             e.stopPropagation();
             onClose();
           }}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white/80 hover:text-white cursor-pointer group active:scale-95 shadow-xl relative w-14 h-14 flex items-center justify-center overflow-hidden"
-          style={{ pointerEvents: showControls ? 'auto' : 'none' }}
+          className="p-3 bg-brand rounded-full transition-colors text-brand-contrast cursor-pointer active:scale-95 shadow-[0_8px_24px_rgba(0,0,0,0.5)] relative w-14 h-14 flex items-center justify-center shrink-0"
           title="Sair da Tela Cheia"
         >
-          <AnimatePresence mode="wait">
-            {isHovered ? (
-              <motion.div
-                key="down"
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronDown size={32} />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="min"
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -10, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Minimize2 size={28} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <ChevronDown size={30} strokeWidth={2.75} />
         </motion.button>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/40">Tocando Agora</span>

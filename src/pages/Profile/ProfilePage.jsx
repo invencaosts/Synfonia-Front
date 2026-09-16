@@ -617,12 +617,12 @@ const ProfilePage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Playlists Públicas */}
         <section className="md:col-span-2 bg-(--bg-card) p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-(--border-subtle) space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold flex items-center gap-3 text-main">
-              <ListMusic className="text-brand" size={24} />
-              Playlists no Perfil
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-xl font-bold flex items-center gap-3 text-main min-w-0">
+              <ListMusic className="text-brand shrink-0" size={24} />
+              <span className="truncate">Playlists no Perfil</span>
             </h3>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-dim">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-dim shrink-0 pt-1.5">
               {playlists.length} Coleções
             </span>
           </div>
@@ -719,16 +719,16 @@ const ProfilePage = () => {
                   </div>
                 </div>
               )}
-              <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between group">
-                <div>
+              <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between gap-3 group">
+                <div className="min-w-0">
                   <p className="text-[10px] text-dim/60 uppercase font-black tracking-widest mb-1">E-mail Principal</p>
-                  <p className="text-main font-medium text-sm">{user?.email}</p>
+                  <p className="text-main font-medium text-sm truncate">{user?.email}</p>
                 </div>
                 <Button
                   variant={copied ? 'outline' : 'secondary'}
                   onClick={handleShare}
                   icon={copied ? Check : Share2}
-                  className={`px-3! py-1.5! md:px-4! md:py-2! text-[10px] transition-all active:scale-90 font-bold ${copied ? 'text-green-600! dark:text-green-400! border-green-500/50! bg-green-500/10!' : 'text-brand-legible! bg-brand/10! border-brand/20! hover:bg-brand/20!'}`}
+                  className={`shrink-0 px-3! py-1.5! md:px-4! md:py-2! text-[10px] transition-all active:scale-90 font-bold ${copied ? 'text-green-600! dark:text-green-400! border-green-500/50! bg-green-500/10!' : 'text-brand-legible! bg-brand/10! border-brand/20! hover:bg-brand/20!'}`}
                 >
                   <span className="hidden md:inline">{copied ? 'Copiado!' : 'Compartilhar'}</span>
                 </Button>

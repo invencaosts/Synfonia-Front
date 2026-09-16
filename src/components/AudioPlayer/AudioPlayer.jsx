@@ -135,47 +135,28 @@ const AudioPlayer = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Gesto único: mini -> tela cheia direto, sem estágio intermediário nem preview de altura.
+  const OPEN_DRAG_THRESHOLD = 20; // px de arrasto pra cima já confirma abertura
+
   const handleTouchStart = (e) => {
     if (window.innerWidth >= 768) return;
     touchStartY.current = e.touches[0].clientY;
-    startDragOffset.current = isExpanded ? EXPANDED_HEIGHT : MINI_HEIGHT;
     setIsDragging(true);
   };
 
-  const handleTouchMove = (e) => {
-    if (!isDragging || window.innerWidth >= 768) return;
-    
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - touchStartY.current;
-    
-    // Calculate new height (dragging DOWN increases Y, so we subtract deltaY to decrease height)
-    let newHeight = startDragOffset.current - deltaY;
-    
-    // Constraints
-    newHeight = Math.max(MINI_HEIGHT, Math.min(newHeight, EXPANDED_HEIGHT));
-    
-    setCurrentHeight(newHeight);
+  const handleTouchMove = () => {
+    // Sem preview de altura durante o arrasto: evita o estágio visual quebrado.
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
     if (!isDragging || window.innerWidth >= 768) return;
     setIsDragging(false);
 
-    // Snap to closest state
-    if (isExpanded) {
-      // If was expanded and dragged down significantly, collapse
-      if (currentHeight < EXPANDED_HEIGHT - 100) {
-        setIsExpanded(false);
-      } else {
-        setCurrentHeight(EXPANDED_HEIGHT);
-      }
-    } else {
-      // If was collapsed and dragged up significantly, expand
-      if (currentHeight > MINI_HEIGHT + 100) {
-        setIsExpanded(true);
-      } else {
-        setCurrentHeight(MINI_HEIGHT);
-      }
+    const endY = e.changedTouches[0].clientY;
+    const deltaY = touchStartY.current - endY;
+
+    if (deltaY > OPEN_DRAG_THRESHOLD) {
+      setIsFullScreen(true);
     }
   };
   const expansionProgress = Math.max(0, Math.min(1, (EXPANDED_HEIGHT - MINI_HEIGHT) === 0 ? 0 : (currentHeight - MINI_HEIGHT) / (EXPANDED_HEIGHT - MINI_HEIGHT)));
@@ -197,10 +178,11 @@ const AudioPlayer = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={`fixed left-0 right-0 z-50 animate-in slide-in-from-bottom duration-500 md:h-24 ${isDragging ? '' : 'transition-all duration-300'}`}
-        style={{ 
+        style={{
           bottom: window.innerWidth < 768 ? `${80 * (1 - expansionProgress)}px` : '0px',
           height: window.innerWidth < 768 ? `${currentHeight}px` : undefined,
-          visibility: !currentTrack ? 'hidden' : 'visible'
+          visibility: !currentTrack ? 'hidden' : 'visible',
+          touchAction: window.innerWidth < 768 ? 'none' : undefined
         }}
       >
         <motion.div 
@@ -234,7 +216,7 @@ const AudioPlayer = () => {
 
           {/* Track Info Section (Toggle Expansion) */}
           <div 
-            onClick={() => !isExpanded && window.innerWidth < 768 && setIsExpanded(true)}
+            onClick={() => !isExpanded && window.innerWidth < 768 && setIsFullScreen(true)}
             className={`flex ${(isExpanded || expansionProgress > 0.05) ? 'flex-col items-center' : 'items-center gap-3 md:gap-4 w-auto md:w-1/3 flex-1 md:flex-none'} min-w-0 md:min-w-[200px] cursor-pointer`}
           >
             <div 

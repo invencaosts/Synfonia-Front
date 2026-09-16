@@ -403,9 +403,15 @@ button:hover:not(:disabled) {
 .music-title-wrap .title-text {
   width: 100%;
   text-align: center;
-  /* Padding simétrico para garantir que o texto fique centralizado de verdade, 
+  /* Padding simétrico para garantir que o texto fique centralizado de verdade,
      reservando espaço para o badge na direita */
-  padding: 0 60px; 
+  padding: 0 12px;
+}
+
+@media (min-width: 768px) {
+  .music-title-wrap .title-text {
+    padding: 0 60px;
+  }
 }
 
 .music-title-wrap .music-badge-preview {

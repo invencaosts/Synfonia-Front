@@ -466,13 +466,13 @@ const PlaylistsPage = () => {
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-32 md:pb-8">
       {/* Header com Botão de Criar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-row items-center justify-between md:block">
-          <div>
-            <h2 className="text-3xl font-bold text-main tracking-tight">Minhas Playlists</h2>
-            <p className="text-dim mt-1">Organize suas batidas favoritas por vibe</p>
+        <div className="flex flex-row items-start justify-between gap-3 md:block">
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-bold text-main leading-tight">Minhas Playlists</h2>
+            <p className="text-dim text-sm md:text-base mt-2 leading-relaxed">Organize suas batidas favoritas por vibe</p>
           </div>
-          
-          <div className="md:hidden flex items-center bg-(--bg-card) border border-(--border-subtle) rounded-xl p-1">
+
+          <div className="md:hidden shrink-0 flex items-center bg-(--bg-card) border border-(--border-subtle) rounded-xl p-1">
             <button 
               onClick={() => viewMode !== 'grid' && toggleViewMode()}
               className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-brand text-brand-contrast shadow-sm' : 'text-dim hover:text-main'}`}
@@ -1015,17 +1015,17 @@ const PlaylistsPage = () => {
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center py-24 bg-brand/5 rounded-[40px] border border-dashed border-(--border-subtle) text-center animate-in zoom-in-95 duration-500">
-          <div className="w-20 h-20 bg-brand/10 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
-            <ListMusic className="text-brand/60 w-10 h-10" />
+        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-brand/5 rounded-[40px] border border-dashed border-(--border-subtle) text-center animate-in zoom-in-95 duration-500">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-brand/10 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
+            <ListMusic className="text-brand/60 w-8 h-8 md:w-10 md:h-10" />
           </div>
-          <h3 className="text-xl font-bold text-main mb-2">Nenhuma playlist ainda</h3>
-          <p className="text-dim max-w-xs mb-8">
+          <h3 className="text-lg md:text-xl font-bold text-main mb-3 leading-tight">Nenhuma playlist ainda</h3>
+          <p className="text-dim text-sm md:text-base max-w-xs mb-8 leading-relaxed">
             Você ainda não criou nenhuma playlist. Comece organizando suas músicas por vibe agora mesmo!
           </p>
-          <button 
+          <button
             onClick={() => setShowCreateModal(true)}
-            className="px-8 py-3 bg-brand/10 text-brand rounded-2xl font-bold hover:bg-brand/20 transition-all border border-brand/20"
+            className="px-6 md:px-8 py-3 text-sm md:text-base bg-brand/10 text-brand rounded-2xl font-bold hover:bg-brand/20 transition-all border border-brand/20"
           >
             Criar Minha Primeira Playlist
           </button>

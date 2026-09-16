@@ -596,20 +596,20 @@ const LibraryPage = () => {
                           {item.music?.source === 'SPOTIFY' && !spotifyToken && <Lock size={12} className="text-brand shrink-0" />}
                           <span className="truncate">{item.music?.nome || 'Título desconhecido'}</span>
                           {item.music?.source === 'SPOTIFY' ? (
-                            <span className="bg-[#1DB954]/20 text-[#1DB954] text-[8px] font-black px-1.5 py-0.5 rounded-md border border-[#1DB954]/20 uppercase tracking-tighter shrink-0">Spotify</span>
+                            <span className="hidden sm:inline-block bg-[#1DB954]/20 text-[#1DB954] text-[8px] font-black px-1.5 py-0.5 rounded-md border border-[#1DB954]/20 uppercase tracking-tighter shrink-0">Spotify</span>
                           ) : item.music?.source === 'YOUTUBE_MUSIC' ? (
-                            <span className="bg-red-500/20 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase tracking-tighter shrink-0">YouTube</span>
+                            <span className="hidden sm:inline-block bg-red-500/20 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase tracking-tighter shrink-0">YouTube</span>
                           ) : (
-                            <span className="bg-brand/10 text-brand text-[8px] font-black px-1.5 py-0.5 rounded-md border border-brand/20 uppercase tracking-tighter shrink-0">{item.music?.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
+                            <span className="hidden sm:inline-block bg-brand/10 text-brand text-[8px] font-black px-1.5 py-0.5 rounded-md border border-brand/20 uppercase tracking-tighter shrink-0">{item.music?.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
                           )}
                           {isPreviewOnlyTrack(item.music?.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
                         </h3>
-                        <div className="flex items-center gap-2 text-[10px] md:text-xs">
-                          <span className="text-brand">{item.music?.artista}</span>
-                          <span className="text-zinc-600">•</span>
-                          <span className="text-zinc-500 truncate">{item.music?.album}</span>
-                          <span className="text-zinc-600 hidden sm:inline">•</span>
-                          <span className="text-zinc-600 text-[10px] hidden sm:inline">{formatDate(item.dataAdicao)}</span>
+                        <div className="flex items-center gap-2 text-[10px] md:text-xs min-w-0">
+                          <span className="text-brand truncate shrink min-w-0 max-w-[50%]">{item.music?.artista}</span>
+                          <span className="text-zinc-600 shrink-0">•</span>
+                          <span className="text-zinc-500 truncate shrink min-w-0">{item.music?.album}</span>
+                          <span className="text-zinc-600 hidden sm:inline shrink-0">•</span>
+                          <span className="text-zinc-600 text-[10px] hidden sm:inline shrink-0">{formatDate(item.dataAdicao)}</span>
                         </div>
                       </div>
 
@@ -623,7 +623,7 @@ const LibraryPage = () => {
                         </button>
                         <button
                           onClick={() => addToQueue(item.music)}
-                          className="p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all"
+                          className="p-1.5 md:p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all hidden md:block"
                           title="Adicionar à fila"
                         >
                           <ListMusic size={18} />
@@ -631,7 +631,7 @@ const LibraryPage = () => {
                         <div className="relative">
                           <button
                             onClick={() => setActiveMenu(activeMenu === item.music?.id ? null : item.music?.id)}
-                            className={`p-2 rounded-full transition-all ${activeMenu === item.music?.id ? 'bg-brand/20 text-brand' : 'text-zinc-500 hover:text-brand hover:bg-brand/10'}`}
+                            className={`p-1.5 md:p-2 rounded-full transition-all ${activeMenu === item.music?.id ? 'bg-brand/20 text-brand' : 'text-zinc-500 hover:text-brand hover:bg-brand/10'}`}
                           >
                             <ListPlus size={18} />
                           </button>
@@ -647,7 +647,7 @@ const LibraryPage = () => {
                         <button
                           onClick={() => setShowConfirm(item)}
                           disabled={deletingId === item.music?.id}
-                          className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
+                          className="p-1.5 md:p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
                         >
                           <Trash2 size={18} />
                         </button>
