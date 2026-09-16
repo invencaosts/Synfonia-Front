@@ -14,6 +14,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useImport } from '../../hooks/useImport';
 import { isPreviewOnlyTrack } from '../../utils/musicSource';
 
+const FALLBACK_ARTWORK = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop';
+
 const LibraryPage = () => {
   const {
     playTrack, currentTrack, isPlaying, addToQueue,
@@ -430,8 +432,9 @@ const LibraryPage = () => {
                     >
                       <div className="relative aspect-square mb-4 rounded-xl overflow-hidden shadow-2xl">
                         <img
-                          src={item.music?.capaUrl?.replace('100x100', '400x400') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop'}
+                          src={item.music?.capaUrl?.replace('100x100', '400x400') || FALLBACK_ARTWORK}
                           alt={item.music?.nome || 'Música'}
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = FALLBACK_ARTWORK; }}
                           className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.music?.source === 'SPOTIFY' && !spotifyToken ? 'grayscale opacity-50' : ''}`}
                         />
 
@@ -500,14 +503,14 @@ const LibraryPage = () => {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => playNext(item.music)}
-                            className="p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all"
+                            className="hidden md:block p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all"
                             title="Tocar a seguir"
                           >
                             <Plus size={18} />
                           </button>
                           <button
                             onClick={() => addToQueue(item.music)}
-                            className="p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all"
+                            className="hidden md:block p-2 text-zinc-500 hover:text-brand hover:bg-brand/10 rounded-full transition-all"
                             title="Adicionar à fila"
                           >
                             <ListMusic size={18} />
@@ -568,8 +571,9 @@ const LibraryPage = () => {
                     >
                       <div className="item-image relative">
                         <img
-                          src={item.music?.capaUrl?.replace('100x100', '200x200') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'}
+                          src={item.music?.capaUrl?.replace('100x100', '200x200') || FALLBACK_ARTWORK}
                           alt={item.music?.nome}
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = FALLBACK_ARTWORK; }}
                           className="w-full h-full object-cover"
                         />
                         <button

@@ -235,26 +235,13 @@ const AudioPlayer = () => {
               />
             </div>
             
-            <div className={`overflow-hidden flex flex-col ${(isExpanded || expansionProgress > 0.05) ? 'items-center text-center mt-1 w-full px-6' : 'justify-center md:max-w-xs'}`}>
+            <div className={`overflow-hidden flex flex-col min-w-0 ${(isExpanded || expansionProgress > 0.05) ? 'items-center text-center mt-1 w-full px-6' : 'justify-center max-w-[28vw] md:max-w-xs'}`}>
               <div className={`flex items-center ${(isExpanded || expansionProgress > 0.05) ? 'flex-col gap-0' : 'gap-3'} w-full`}>
-                <MarqueeText 
+                <MarqueeText
                   text={currentTrack?.nome || 'Sem Reprodução'}
                   className={(isExpanded || expansionProgress > 0.05) ? 'text-lg font-black mb-0' : 'font-bold text-xs md:text-sm truncate uppercase tracking-tight'}
                   style={{ color: 'var(--user-song-color, var(--brand-color))' }}
                 />
-                
-                {!(isExpanded || expansionProgress > 0.05) && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsQueueOpen(true);
-                    }}
-                    className="text-dim hover:text-brand transition-all active:scale-90 shrink-0 self-center flex items-center justify-center p-2"
-                    title="Ver fila"
-                  >
-                    <ListMusic size={20} />
-                  </button>
-                )}
               </div>
               <MarqueeText 
                 text={currentTrack?.artista || 'Artista desconhecido'}
@@ -294,7 +281,7 @@ const AudioPlayer = () => {
                   e.stopPropagation();
                   toggleFavorite(currentTrack);
                 }}
-                className={`p-2 transition-all active:scale-90 ${safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? 'text-brand' : 'text-dim hover:text-main'}`}
+                className={`hidden md:block p-2 transition-all active:scale-90 ${safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? 'text-brand' : 'text-dim hover:text-main'}`}
                 title={safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               >
                 <Heart size={20} fill={safeFavoriteIds.has(String(currentTrack.trackId || currentTrack.id)) ? "currentColor" : "none"} strokeWidth={2} />
@@ -466,6 +453,16 @@ const AudioPlayer = () => {
           {/* Normal Mobile Mini Controls (Hidden when Expanded) */}
           {!(isExpanded || expansionProgress > 0.2) && (
             <div className="flex md:hidden items-center gap-4">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsQueueOpen(true);
+                }}
+                className="text-dim hover:text-brand transition-all active:scale-90 shrink-0"
+                title="Ver fila"
+              >
+                <ListMusic size={20} />
+              </button>
               <button
                 onClick={toggleShuffle}
                 className={`p-2 transition-all active:scale-90 ${isShuffleEnabled ? 'text-brand' : 'text-dim hover:text-main'}`}

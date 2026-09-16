@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Shuffle, Repeat, Loader2, Heart, ChevronDown } from 'lucide-react';
 import { useAudio } from '../../hooks/useAudio';
@@ -40,6 +40,29 @@ const FullscreenPlayer = ({ onClose }) => {
   const handleSkipPrevious = () => {
     setDirection(-1);
     skipPrevious();
+  };
+
+  // Swipe horizontal no conteúdo (mobile) para trocar de faixa
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const SWIPE_THRESHOLD = 60;
+
+  const handleContentTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleContentTouchEnd = (e) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) {
+        handleSkipNext();
+      } else {
+        handleSkipPrevious();
+      }
+    }
   };
 
   const handleProgressChange = (e) => {
@@ -157,7 +180,7 @@ const FullscreenPlayer = ({ onClose }) => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="absolute bottom-10 left-10 z-50 flex items-center gap-4 p-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 group cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all max-w-[300px] shadow-2xl"
+                className="hidden md:flex absolute bottom-10 left-10 z-50 items-center gap-4 p-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 group cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all max-w-[300px] shadow-2xl"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSkipPrevious();
@@ -183,7 +206,7 @@ const FullscreenPlayer = ({ onClose }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="absolute bottom-10 right-10 z-50 flex items-center gap-4 p-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 group cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-right max-w-[300px] shadow-2xl"
+                className="hidden md:flex absolute bottom-10 right-10 z-50 items-center gap-4 p-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 group cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-right max-w-[300px] shadow-2xl"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSkipNext();
@@ -225,7 +248,11 @@ const FullscreenPlayer = ({ onClose }) => {
         </div>
         <div className="w-12" />
       </div>      {/* Main Content */}
-      <div className="relative z-10 w-full max-w-[1400px] px-8 flex-1 flex flex-col justify-center items-center">
+      <div
+        className="relative z-10 w-full max-w-[1400px] px-8 pt-24 md:pt-0 flex-1 flex flex-col justify-center items-center"
+        onTouchStart={handleContentTouchStart}
+        onTouchEnd={handleContentTouchEnd}
+      >
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentTrack.trackId || currentTrack.id}
