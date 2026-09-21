@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+// Assinatura de release: lida de env vars (CI) ou de android/keystore.properties (local,
+// nunca versionado). Sem nenhum dos dois, o build de release cai pra assinatura debug do
+// próprio Android Studio, então continua funcionando em dev sem configurar nada.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def ksStoreFile = System.getenv('ANDROID_KEYSTORE_PATH') ?: keystoreProps['storeFile']
+def ksStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: keystoreProps['storePassword']
+def ksKeyAlias = System.getenv('ANDROID_KEY_ALIAS') ?: keystoreProps['keyAlias']
+def ksKeyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: keystoreProps['keyPassword']
+def hasReleaseSigning = ksStoreFile && ksStorePassword && ksKeyAlias && ksKeyPassword
+
 android {
     namespace = "com.synfonia.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +21,8 @@ android {
         applicationId "com.synfonia.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode (System.getenv('ANDROID_VERSION_CODE') as Integer) ?: 1
+        versionName System.getenv('ANDROID_VERSION_NAME') ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +30,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(ksStoreFile)
+                storePassword ksStorePassword
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
