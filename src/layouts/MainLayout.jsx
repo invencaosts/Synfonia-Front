@@ -8,6 +8,7 @@ import { useImport } from '../hooks/useImport';
 import { useYoutubeConnect } from '../hooks/useYoutubeConnect';
 import ConfirmationDialog from '../components/ui/ConfirmationDialog';
 import YoutubeConnectModal from '../components/YoutubeConnectModal';
+import UpdateAvailableBanner from '../components/UpdateAvailableBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -185,6 +186,8 @@ const MainLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <UpdateAvailableBanner />
+
         {/* Top Header */}
         <header className="h-16 flex items-center justify-between px-4 md:px-8 z-20 glass-panel border-b border-(--border-subtle) shrink-0">
           <div className="md:hidden flex items-center gap-3">
