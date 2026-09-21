@@ -1,38 +1,81 @@
-# 🎵 Synfonia
+<p>README.md available in English. <a href="#synfonia---english-version">Go To!</a></p>
 
-Sua música, num só lugar. Junte Spotify, YouTube Music e sua biblioteca pessoal numa interface rápida, bonita e sem enrolação — favorite, monte playlists, avalie álbuns e descubra o que seus amigos estão ouvindo.
+<h1 align="center">Synfonia</h1>
 
-**[📲 Baixar o app (Android)](https://github.com/invencaosts/Synfonia-Front/releases/latest)**
+<p align="center">
+Aplicativo de música multiplataforma que unifica Spotify, YouTube Music e biblioteca pessoal num só player, com perfis sociais e avaliação de álbuns.
+</p>
+
+<p align="center">
+  <a href="#-tecnologias">Tecnologias</a> |
+  <a href="#-projeto">Projeto</a> |
+  <a href="#-licença">Licença</a>
+</p>
+<br>
+
+## 🔧 Tecnologias
+
+Este projeto foi desenvolvido com:
+- React
+- Vite
+- TailwindCSS
+- Capacitor (Android)
+- Framer Motion
+- Git e GitHub
+
+## 📖 Projeto
+
+O **Synfonia** é o frontend da plataforma de música Synfonia. Junta Spotify, YouTube Music e a biblioteca pessoal do usuário numa interface só, com player em tela cheia, perfil social mostrando o que está tocando, montagem de playlists e avaliação de álbuns com nota e resenha compartilhável.
+
+O backend, responsável pela API, autenticação e integrações, fica em [`invencaosts/Synfonia`](https://github.com/invencaosts/Synfonia).
+
+## 🔐 Licença
+
+Este projeto está disponível sob licença MIT.
 
 ---
 
-## O que dá pra fazer
-
-- **Toca tudo junto** — Spotify, YouTube Music e biblioteca própria numa fila só, sem trocar de app
-- **Perfil social** — mostra o que você tá ouvindo agora, sua música favorita, avatar e playlists públicas
-- **Avalia álbuns** — nota, resenha e compartilha o resultado com os amigos
-- **Player imersivo** — tela cheia com a capa em destaque, sem distração
+Desenvolvido por:
+- [Guilherme da Invenção](https://github.com/invencaosts)
+- [João Paulo Santana](https://github.com/Ja0Santana)
 
 ---
 
-## O repositório
+<h1 align="center">Synfonia - English Version</h1>
 
-Este é o **frontend** (React + Vite + Capacitor). O backend fica em [`invencaosts/Synfonia`](https://github.com/invencaosts/Synfonia).
+<p align="center">
+Cross-platform music app that unifies Spotify, YouTube Music and a personal library into one player, with social profiles and album ratings.
+</p>
 
-### Rodando local
+<p align="center">
+  <a href="#-technologies">Technologies</a> |
+  <a href="#-project">Project</a> |
+  <a href="#-license">License</a>
+</p>
+<br>
 
-```bash
-npm install
-npm run dev
-```
+## 🔧 Technologies
 
-Configure o `.env` com a URL do backend antes (veja `.env.example`). Pra empacotar o app Android via Capacitor, veja o workflow em `.github/workflows/release-android.yml`.
+This project was developed with:
+- React
+- Vite
+- TailwindCSS
+- Capacitor (Android)
+- Framer Motion
+- Git and GitHub
 
-### Lançando uma nova versão
+## 📖 Project
 
-```bash
-git tag v1.0.x
-git push origin v1.0.x
-```
+**Synfonia** is the frontend of the Synfonia music platform. It brings Spotify, YouTube Music and the user's personal library together into a single interface, with a fullscreen player, a social profile showing what's currently playing, playlist building, and album ratings with a shareable score and review.
 
-O GitHub Actions builda, assina e publica o APK automaticamente em [Releases](https://github.com/invencaosts/Synfonia-Front/releases).
+The backend, responsible for the API, authentication and integrations, lives at [`invencaosts/Synfonia`](https://github.com/invencaosts/Synfonia).
+
+## 🔐 License
+
+This project is available under the MIT license.
+
+---
+
+Developed By:
+- [Guilherme da Invenção](https://github.com/invencaosts)
+- [João Paulo Santana](https://github.com/Ja0Santana)
