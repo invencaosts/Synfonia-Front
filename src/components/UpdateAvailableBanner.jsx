@@ -9,11 +9,14 @@ const UpdateAvailableBanner = () => {
   if (!updateInfo || dismissed) return null;
 
   const openDownload = async () => {
+    // O link direto do .apk falha dentro do browser embutido do Capacitor
+    // (não dispara o download manager do Android). A página da release
+    // funciona, e o usuário toca no anexo lá dentro do Chrome de verdade.
     try {
       const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ url: updateInfo.downloadUrl });
+      await Browser.open({ url: updateInfo.releaseUrl });
     } catch {
-      window.open(updateInfo.downloadUrl, '_blank');
+      window.open(updateInfo.releaseUrl, '_blank');
     }
   };
 
