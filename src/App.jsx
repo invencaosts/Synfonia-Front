@@ -7,6 +7,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import LibraryPage from './pages/Library/LibraryPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import PlaylistsPage from './pages/Playlists/PlaylistsPage';
+import AlbumRatingPage from './pages/AlbumRating/AlbumRatingPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import SpotifyCallback from './pages/SpotifyCallback';
 import PrivateRoute from './routes/PrivateRoute';
@@ -64,6 +65,7 @@ const AppContent = () => {
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/library" element={<LibraryPage />} />
                     <Route path="/playlists" element={<PlaylistsPage />} />
+                    <Route path="/avaliar" element={<AlbumRatingPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                 </Route>

@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Play, Pause, Heart, Loader2, Music as MusicIcon, ChevronDown, ChevronLeft, ChevronRight, Check, LayoutGrid, List, ListPlus, ListMusic, Plus, Lock } from 'lucide-react';
+import { Search, Play, Pause, Heart, Loader2, Music as MusicIcon, ChevronLeft, ChevronRight, Check, LayoutGrid, List, ListPlus, ListMusic, Plus, Lock } from 'lucide-react';
 import { musicService } from '../../services/musicService';
 import { spotifyService } from '../../services/spotifyService';
 import { authService } from '../../services/authService';
+import { albumRatingService } from '../../services/albumRatingService';
 import { useAudio } from '../../hooks/useAudio';
 import { useTheme } from '../../hooks/useTheme';
 import { isPreviewOnlyTrack } from '../../utils/musicSource';
+import { getRecentAlbums } from '../../utils/recentAlbums';
+import AlbumDetailScreen from '../../components/AlbumRating/AlbumDetailScreen';
+import Select from '../../components/ui/Select';
+import RatingFormScreen from '../../components/AlbumRating/RatingFormScreen';
+import ShareResultScreen from '../../components/AlbumRating/ShareResultScreen';
 
 const DashboardPage = () => {
   const { playTrack, currentTrack, isPlaying, addToQueue, playNext } = useAudio();
@@ -22,6 +28,11 @@ const DashboardPage = () => {
   const itemsPerPage = 10;
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [recentAlbums, setRecentAlbums] = useState([]);
+  const [albums, setAlbums] = useState([]);
+  const [detailAlbum, setDetailAlbum] = useState(null);
+  const [ratingAlbum, setRatingAlbum] = useState(null);
+  const [savedRating, setSavedRating] = useState(null);
 
   const user = authService.getCurrentUser();
   const spotifyToken = spotifyService.getAccessToken();
@@ -33,6 +44,24 @@ const DashboardPage = () => {
     return history;
   }, [history]);
 
+  const listenAgainItems = useMemo(() => {
+    const trackItems = filteredHistory.map((item) => ({
+      kind: 'track',
+      key: `track-${item.id || item.music?.id}`,
+      date: item.data || item.playedAt,
+      data: item,
+    }));
+    const albumItems = recentAlbums.map((album) => ({
+      kind: 'album',
+      key: `album-${album.albumKey}`,
+      date: album.playedAt,
+      data: album,
+    }));
+    return [...trackItems, ...albumItems]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+  }, [filteredHistory, recentAlbums]);
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -40,7 +69,9 @@ const DashboardPage = () => {
         if (!authService.isGuest()) {
           dbHistory = await musicService.getHistory();
         }
-        
+
+        setRecentAlbums(getRecentAlbums());
+
         // Buscar histórico local (fallback para Spotify)
         const localHistory = JSON.parse(localStorage.getItem('synfonia_local_history') || '[]');
         
@@ -93,8 +124,7 @@ const DashboardPage = () => {
     { id: 'album', label: 'Álbum' },
   ];
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const runSearch = async () => {
     if (!searchTerm.trim()) return;
 
     setLoading(true);
@@ -103,16 +133,23 @@ const DashboardPage = () => {
     setCurrentPage(1);
 
     try {
-      if (useSpotify) {
+      if (searchType === 'album' && !useSpotify) {
+        const results = await albumRatingService.searchAlbums(searchTerm, backendSource);
+        setAlbums(results || []);
+        setMusics([]);
+        setTotalItems(0);
+      } else if (useSpotify) {
         const results = await spotifyService.search(searchTerm, searchType, 0);
         setMusics(results.items || []);
         setTotalItems(results.total || 0);
+        setAlbums([]);
       } else {
         const results = await musicService.search(searchTerm, searchType, backendSource);
         // Filtro para remover músicas do Spotify se não estiver logado
         const filtered = (results || []).filter(m => m.source !== 'SPOTIFY' && !(m.uri && m.uri.includes('spotify')));
         setMusics(filtered);
         setTotalItems(filtered.length);
+        setAlbums([]);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -121,6 +158,19 @@ const DashboardPage = () => {
       setLoading(false);
     }
   };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    runSearch();
+  };
+
+  // Reaplica a busca automaticamente quando o filtro muda, sem exigir novo clique em "Buscar"
+  useEffect(() => {
+    if (hasSearched && searchTerm.trim()) {
+      runSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchType]);
 
   // Lógica de Paginação Local
   const totalPages = Math.ceil((useSpotify ? totalItems : musics.length) / itemsPerPage);
@@ -207,18 +257,13 @@ const DashboardPage = () => {
                 />
               </div>
 
-              <div className="relative min-w-[100px] md:min-w-[140px]">
-                <select
-                  value={searchType}
-                  onChange={(e) => setSearchType(e.target.value)}
-                  className="w-full h-full bg-(--bg-card) border border-(--border-subtle) rounded-2xl px-4 appearance-none text-main font-medium focus:border-brand outline-none cursor-pointer transition-all hover:bg-(--bg-side) text-sm md:text-base"
-                >
-                  {searchOptions.map(opt => (
-                    <option key={opt.id} value={opt.id} className="bg-(--bg-main) text-main">{opt.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-dim pointer-events-none w-4 h-4" />
-              </div>
+              <Select
+                variant="field"
+                value={searchType}
+                onChange={setSearchType}
+                options={searchOptions.map(opt => ({ value: opt.id, label: opt.label }))}
+                className="min-w-[100px] md:min-w-[140px]"
+              />
             </div>
 
             <button
@@ -233,35 +278,70 @@ const DashboardPage = () => {
       </section>
 
       {/* Escute Novamente Section */}
-      {!loadingHistory && history.length > 0 && !hasSearched && (
+      {!loadingHistory && listenAgainItems.length > 0 && !hasSearched && (
         <section className="space-y-4 pt-4 md:pt-6 animate-in slide-in-from-bottom-4 duration-700">
           <h2 className="text-xl md:text-2xl font-bold text-main flex items-center gap-2">
              <Play className="text-brand fill-brand" size={20} />
              Escute novamente
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-             {filteredHistory.slice(0, 10).map((item) => (
-                <div key={item.id} className="glass-card rounded-xl md:rounded-2xl p-3 md:p-4 group transition-all duration-300 hover:scale-[1.02] hover:bg-brand/5 border border-(--border-subtle) flex flex-col h-full cursor-pointer" onClick={() => playTrack(item.music, filteredHistory.map(h => h.music))}>
-                   <div className="relative aspect-square mb-3 rounded-xl overflow-hidden shadow-lg">
+             {listenAgainItems.map((entry) => (
+                entry.kind === 'album' ? (
+                  <div
+                    key={entry.key}
+                    className="glass-card rounded-xl md:rounded-2xl p-3 md:p-4 group transition-all duration-300 hover:scale-[1.02] hover:bg-brand/5 border border-(--border-subtle) flex flex-col h-full cursor-pointer"
+                    onClick={() => setDetailAlbum(entry.data)}
+                  >
+                    <div className="relative aspect-square mb-3 rounded-xl overflow-hidden shadow-lg">
                       <img
-                        src={item.music?.capaUrl?.replace('100x100', '400x400') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop'}
-                        alt={item.music?.nome}
-                        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${(item.music?.isSpotify || item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify'))) && !spotifyToken ? 'grayscale opacity-50' : ''}`}
+                        src={entry.data.capaUrl?.replace('100x100', '400x400') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop'}
+                        alt={entry.data.albumName}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
 
-                      {/* Source Badge */}
+                      {/* Badges */}
                       <div className="absolute top-1.5 left-1.5 flex gap-1">
-                        {(item.music?.isSpotify || item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify'))) ? (
-                          <span className="bg-[#1DB954]/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Spotify</span>
-                        ) : item.music?.source === 'YOUTUBE_MUSIC' ? (
+                        <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Álbum</span>
+                        {entry.data.source === 'YOUTUBE_MUSIC' ? (
                           <span className="bg-red-600/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">YouTube</span>
                         ) : (
-                          <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{item.music?.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
+                          <span className="bg-zinc-800/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{entry.data.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
                         )}
                       </div>
 
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                         {(item.music?.isSpotify || item.music?.source === 'SPOTIFY' || (item.music?.uri && item.music.uri.includes('spotify'))) && !spotifyToken ? (
+                        <div className="w-10 h-10 bg-brand rounded-full flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:scale-110 active:scale-90">
+                          <Play className="text-brand-contrast fill-current ml-1" size={16} />
+                        </div>
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-xs md:text-sm truncate text-song group-hover:opacity-80 transition-all" title={entry.data.albumName}>
+                      {entry.data.albumName}
+                    </h3>
+                    <p className="text-dim text-[10px] md:text-xs truncate text-center mt-0.5">{entry.data.artista}</p>
+                  </div>
+                ) : (
+                <div key={entry.key} className="glass-card rounded-xl md:rounded-2xl p-3 md:p-4 group transition-all duration-300 hover:scale-[1.02] hover:bg-brand/5 border border-(--border-subtle) flex flex-col h-full cursor-pointer" onClick={() => playTrack(entry.data.music, filteredHistory.map(h => h.music))}>
+                   <div className="relative aspect-square mb-3 rounded-xl overflow-hidden shadow-lg">
+                      <img
+                        src={entry.data.music?.capaUrl?.replace('100x100', '400x400') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop'}
+                        alt={entry.data.music?.nome}
+                        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${(entry.data.music?.isSpotify || entry.data.music?.source === 'SPOTIFY' || (entry.data.music?.uri && entry.data.music.uri.includes('spotify'))) && !spotifyToken ? 'grayscale opacity-50' : ''}`}
+                      />
+
+                      {/* Source Badge */}
+                      <div className="absolute top-1.5 left-1.5 flex gap-1">
+                        {(entry.data.music?.isSpotify || entry.data.music?.source === 'SPOTIFY' || (entry.data.music?.uri && entry.data.music.uri.includes('spotify'))) ? (
+                          <span className="bg-[#1DB954]/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Spotify</span>
+                        ) : entry.data.music?.source === 'YOUTUBE_MUSIC' ? (
+                          <span className="bg-red-600/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">YouTube</span>
+                        ) : (
+                          <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{entry.data.music?.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
+                        )}
+                      </div>
+
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                         {(entry.data.music?.isSpotify || entry.data.music?.source === 'SPOTIFY' || (entry.data.music?.uri && entry.data.music.uri.includes('spotify'))) && !spotifyToken ? (
                            <div className="flex flex-col items-center gap-1">
                              <div className="w-8 h-8 bg-zinc-900/80 rounded-full flex items-center justify-center border border-white/10">
                                <Lock className="text-brand" size={14} />
@@ -272,7 +352,7 @@ const DashboardPage = () => {
                            <button
                              className="w-10 h-10 bg-brand rounded-full flex items-center justify-center shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:scale-110 active:scale-90"
                            >
-                              {currentTrack?.id === item.music?.id && isPlaying ? (
+                              {currentTrack?.id === entry.data.music?.id && isPlaying ? (
                                 <Pause className="text-brand-contrast fill-current" size={16} />
                               ) : (
                                 <Play className="text-brand-contrast fill-current ml-1" size={16} />
@@ -281,12 +361,13 @@ const DashboardPage = () => {
                          )}
                       </div>
                    </div>
-                   <h3 className="font-bold text-xs md:text-sm truncate text-song group-hover:opacity-80 transition-all music-title-wrap" title={item.music?.nome}>
-                      <span className="title-text truncate">{item.music?.nome}</span>
-                      {isPreviewOnlyTrack(item.music?.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
+                   <h3 className="font-bold text-xs md:text-sm truncate text-song group-hover:opacity-80 transition-all music-title-wrap" title={entry.data.music?.nome}>
+                      <span className="title-text truncate">{entry.data.music?.nome}</span>
+                      {isPreviewOnlyTrack(entry.data.music?.source, !!spotifyToken) && <span className="music-badge-preview">(Preview)</span>}
                    </h3>
-                   <p className="text-dim text-[10px] md:text-xs truncate text-center mt-0.5">{item.music?.artista}</p>
+                   <p className="text-dim text-[10px] md:text-xs truncate text-center mt-0.5">{entry.data.music?.artista}</p>
                 </div>
+                )
              ))}
           </div>
         </section>
@@ -336,7 +417,59 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {loading ? (
+        {searchType === 'album' && !useSpotify ? (
+          loading ? (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <Loader2 className="w-12 h-12 text-brand animate-spin" />
+              <p className="text-dim font-medium tracking-wide">Sincronizando com a SYNFONIA...</p>
+            </div>
+          ) : albums.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+              {albums.map((album) => (
+                <button
+                  key={album.albumKey}
+                  type="button"
+                  onClick={() => setDetailAlbum(album)}
+                  className="glass-card rounded-xl md:rounded-2xl p-3 md:p-4 group transition-all duration-300 hover:scale-[1.02] hover:bg-brand/5 border border-(--border-subtle) flex flex-col h-full text-left"
+                >
+                  <div className="relative aspect-square mb-3 md:mb-4 rounded-xl overflow-hidden shadow-2xl">
+                    <img
+                      src={album.capaUrl?.replace('100x100', '400x400') || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop'}
+                      alt={album.albumName}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+
+                    {/* Badges */}
+                    <div className="absolute top-1.5 left-1.5 flex gap-1">
+                      <span className="bg-brand/90 text-brand-contrast text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">Álbum</span>
+                      {album.source === 'YOUTUBE_MUSIC' ? (
+                        <span className="bg-red-600/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">YouTube</span>
+                      ) : (
+                        <span className="bg-zinc-800/90 text-white text-[7px] font-black px-1 py-0.5 rounded backdrop-blur-sm border border-white/10 uppercase tracking-tighter">{album.source === 'ITUNES' ? 'Apple' : 'Synfonia'}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <h3 className="font-bold text-xs md:text-sm truncate text-song" title={album.albumName}>
+                      {album.albumName}
+                    </h3>
+                    <p className="text-dim text-[10px] md:text-xs truncate">{album.artista}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : hasSearched ? (
+            <div className="text-center py-20 animate-in fade-in">
+              <MusicIcon className="w-16 h-16 text-dim/20 mx-auto mb-4" />
+              <h3 className="text-dim text-lg font-medium">Nenhum álbum para "{searchTerm}"</h3>
+            </div>
+          ) : (
+            <div className="text-center py-20 animate-in fade-in">
+              <Search className="w-16 h-16 text-dim/20 mx-auto mb-4" />
+              <h3 className="text-dim text-lg font-medium">Digite o nome do álbum para começar</h3>
+            </div>
+          )
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-12 h-12 text-brand animate-spin" />
             <p className="text-dim font-medium tracking-wide">Sincronizando com a SYNFONIA...</p>
@@ -567,6 +700,33 @@ const DashboardPage = () => {
           </div>
         )}
       </section>
+
+      {detailAlbum && (
+        <AlbumDetailScreen
+          album={detailAlbum}
+          onClose={() => setDetailAlbum(null)}
+          onRate={(album) => setRatingAlbum(album)}
+        />
+      )}
+
+      <RatingFormScreen
+        album={ratingAlbum}
+        isOpen={!!ratingAlbum}
+        onClose={() => setRatingAlbum(null)}
+        onSaved={(rating) => {
+          setRatingAlbum(null);
+          setDetailAlbum(null);
+          setSavedRating(rating);
+        }}
+        onDeleted={() => {
+          setRatingAlbum(null);
+          setDetailAlbum(null);
+        }}
+      />
+
+      {savedRating && (
+        <ShareResultScreen rating={savedRating} onClose={() => setSavedRating(null)} />
+      )}
     </div>
   );
 };

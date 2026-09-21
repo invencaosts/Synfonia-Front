@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, Trash2, Clock, Heart,
   Loader2, Calendar, AlertTriangle, X, MoreHorizontal,
-  ListPlus, ListMusic, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
+  ListPlus, ListMusic, ArrowUpDown, ChevronLeft, ChevronRight,
   LayoutGrid, List, Plus, Shuffle, RefreshCw, Download, Upload, Lock, Search
 } from 'lucide-react';
 import AddToPlaylistMenu from '../../components/Playlist/AddToPlaylistMenu';
+import Select from '../../components/ui/Select';
 import { musicService } from '../../services/musicService';
 import { authService } from '../../services/authService';
 import { useAudio } from '../../hooks/useAudio';
@@ -39,7 +40,6 @@ const LibraryPage = () => {
 
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [showSortMenu, setShowSortMenu] = useState(false);
   const [hideSpotify] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -336,47 +336,28 @@ const LibraryPage = () => {
               </button>
             </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className="flex items-center gap-2 px-4 py-2.5 glass-panel border border-white/10 rounded-xl text-xs font-bold text-dim hover:text-main hover:bg-black/5 dark:hover:bg-white/10 transition-all"
-              >
-                <ArrowUpDown size={14} />
-                <span>Ordenar: <span className="text-brand ml-1">{SORT_OPTIONS.find(o => o.value === sortBy)?.label}</span></span>
-                <ChevronDown size={14} className={`transition-transform duration-300 ${showSortMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showSortMenu && (
-                <div className="absolute right-0 mt-2 w-48 glass-panel border border-white/10 rounded-2xl shadow-2xl py-2 z-50">
-                  {SORT_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        if (sortBy === option.value) {
-                          setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy(option.value);
-                          setSortOrder('asc');
-                        }
-                        setShowSortMenu(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-all flex items-center justify-between ${sortBy === option.value
-                          ? 'text-brand bg-brand/10 dark:bg-brand/20'
-                          : 'text-dim hover:text-main hover:bg-black/10 dark:hover:bg-white/10'
-                        }`}
-                    >
-                      <span>{option.label}</span>
-                      {sortBy === option.value && (
-                        <ArrowUpDown 
-                          size={12} 
-                          className={`transition-transform duration-300 ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
+            <Select
+              icon={ArrowUpDown}
+              labelPrefix="Ordenar:"
+              align="right"
+              value={sortBy}
+              onChange={(newValue) => {
+                if (sortBy === newValue) {
+                  setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortBy(newValue);
+                  setSortOrder('asc');
+                }
+              }}
+              options={SORT_OPTIONS}
+              menuClassName="w-48"
+              renderOptionExtra={() => (
+                <ArrowUpDown
+                  size={12}
+                  className={`transition-transform duration-300 ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
+                />
               )}
-            </div>
+            />
           </div>
         )}
       </header>

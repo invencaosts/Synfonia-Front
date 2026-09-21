@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { Music, LayoutDashboard, Heart, Settings, LogOut, User, ListMusic, Instagram, Linkedin, Youtube } from 'lucide-react';
+import { Music, LayoutDashboard, Heart, Settings, LogOut, User, ListMusic, Instagram, Linkedin, Youtube, Star } from 'lucide-react';
 import { authService } from '../services/authService';
 import Logo from '../components/Logo';
 import { useAudio } from '../hooks/useAudio';
@@ -52,6 +52,7 @@ const MainLayout = () => {
     { icon: LayoutDashboard, label: 'Início', shortLabel: 'Início', path: '/' },
     { icon: Heart, label: 'Músicas Curtidas', shortLabel: 'Curtidas', path: '/library' },
     { icon: ListMusic, label: 'Playlists', shortLabel: 'Playlists', path: '/playlists' },
+    { icon: Star, label: 'Avaliar Álbum', shortLabel: 'Avaliar', path: '/avaliar' },
     { icon: User, label: 'Perfil', shortLabel: 'Perfil', path: '/profile' },
     { icon: Settings, label: 'Configurações', shortLabel: 'Ajustes', path: '/settings' },
   ];
@@ -277,18 +278,18 @@ const MainLayout = () => {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass-panel border-t border-(--border-subtle) px-2 flex items-center justify-around z-40 pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass-panel border-t border-(--border-subtle) px-1 flex items-center justify-around z-40 pb-safe">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1.5 transition-all text-center min-w-[64px] ${isActive ? 'text-brand-legible scale-110' : 'text-dim'
+                `flex flex-1 flex-col items-center gap-1 transition-all text-center min-w-0 px-0.5 ${isActive ? 'text-brand-legible scale-110' : 'text-dim'
                 }`
               }
             >
-              <item.icon size={22} />
-              <span className="text-[10px] font-black uppercase tracking-tight">{item.shortLabel}</span>
+              <item.icon size={20} className="shrink-0" />
+              <span className="text-[9px] font-black uppercase tracking-tight truncate w-full">{item.shortLabel}</span>
             </NavLink>
           ))}
         </nav>

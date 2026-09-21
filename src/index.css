@@ -30,18 +30,29 @@
   --brand-color: var(--color-brand, #8b5cf6);
   --brand-rgb: var(--color-brand-rgb, 139, 92, 246);
 
+  /* Altura da barra de navegação inferior (mobile). Some com --player-offset
+     em telas cheias fixed (RatingFormScreen, AlbumDetailScreen, ShareResultScreen)
+     pra não ficarem cobertas pela nav + miniplayer empilhados. */
+  --mobile-nav-offset: 80px;
+
   /* Lógica de Acessibilidade */
   --font-size-base: 16px;
   --font-size-scale: calc(var(--font-size-level, 1) - 1);
-  
-  /* Desktop: escala total */
-  font-size: calc(var(--font-size-base) + (var(--font-size-scale) * 2px));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --mobile-nav-offset: 0px;
+
+    /* Desktop: escala total */
+    font-size: calc(var(--font-size-base) + (var(--font-size-scale) * 2px));
+  }
 }
 
 @media (max-width: 768px) {
   :root {
     /* Mobile: escala permitindo diminuir (0.75x) ou aumentar (até 1.25x) */
-    --font-size-limit: clamp(-1, var(--font-size-scale), 1.5); 
+    --font-size-limit: clamp(-1, var(--font-size-scale), 1.5);
     font-size: calc(var(--font-size-base) + (var(--font-size-limit) * 1.5px));
   }
 }
