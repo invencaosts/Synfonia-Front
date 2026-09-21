@@ -1,86 +1,38 @@
-# ✨ Synfonia - Immersive Music Experience (Frontend)
+# 🎵 Synfonia
 
-O **Synfonia** é uma interface musical de nível premium, projetada para oferecer uma experiência cinematográfica e fluida. Este repositório contém o **Frontend**, construído com as melhores práticas de UX/UI moderna, animações dinâmicas e integração profunda com ecossistemas musicais.
+Sua música, num só lugar. Junte Spotify, YouTube Music e sua biblioteca pessoal numa interface rápida, bonita e sem enrolação — favorite, monte playlists, avalie álbuns e descubra o que seus amigos estão ouvindo.
 
----
-
-## 🎨 Design e Estética (Aesthetic)
-O Synfonia foi desenhado para impressionar desde o primeiro clique:
-- **Glassmorphism & Gradients**: Uma interface moderna com efeitos de desfoque e gradientes vibrantes que se adaptam ao contexto.
-- **Player Fullscreen Imersivo**: Uma experiência de audição que elimina distrações, com artes de álbum em destaque e controles intuitivos.
-- **Framer Motion**: Micro-animações suaves em cada interação, desde a expansão do player até transições de página.
-- **Temas Dinâmicos**: O design se ajusta para refletir a "vibe" do usuário ou da música atual.
+**[📲 Baixar o app (Android)](https://github.com/invencaosts/Synfonia-Front/releases/latest)**
 
 ---
 
-## 🔥 Funcionalidades Principais
-- **Spotify Connect**: Integração via OAuth para sincronizar playlists, metadados e o status "Ouvindo Agora" em tempo real.
-- **Perfis Sociais Personalizáveis**:
-  - Escolha de avatares e links sociais.
-  - **Favorite Beat**: Uma música que toca automaticamente ao visitar o perfil.
-  - Exibição de playlists públicas.
-- **Gerenciamento de Coleção**: Interface intuitiva para favoritar e organizar músicas de múltiplas fontes.
-- **Busca Global**: Motor de busca integrado que vasculha a biblioteca local e serviços externos.
+## O que dá pra fazer
+
+- **Toca tudo junto** — Spotify, YouTube Music e biblioteca própria numa fila só, sem trocar de app
+- **Perfil social** — mostra o que você tá ouvindo agora, sua música favorita, avatar e playlists públicas
+- **Avalia álbuns** — nota, resenha e compartilha o resultado com os amigos
+- **Player imersivo** — tela cheia com a capa em destaque, sem distração
 
 ---
 
-## 🏗️ Excelência Técnica
-- **React 18 + Vite**: Performance ultrarrápida com Hot Module Replacement (HMR).
-- **Gerenciamento de Estado (Context API)**: Lógica centralizada para Áudio, Temas e Autenticação, garantindo consistência em toda a aplicação.
-- **UX Hardening**:
-  - **Sessão Resiliente**: Logout instantâneo e limpeza de cache local proativa.
-  - **Reatividade Real**: Contagens e estados sincronizados globalmente via hooks customizados.
-- **CI/CD**: Workflow de verificação de build automatizado via **GitHub Actions**.
+## O repositório
 
----
+Este é o **frontend** (React + Vite + Capacitor). O backend fica em [`invencaosts/Synfonia`](https://github.com/invencaosts/Synfonia).
 
-## 🚀 Como Iniciar
-1. Certifique-se de ter o **Node.js 22+** instalado.
-2. Configure as **Variáveis de Ambiente** no arquivo `.env`:
-   ```env
-   VITE_API_URL=http://localhost:8080/api/v1
-   VITE_SPOTIFY_CLIENT_ID=seu_client_id
-   VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173/callback
-   ```
-3. Instale as dependências:
-   ```bash
-   npm install
-   ```
-4. Inicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
-
-## 📱 Aplicativos Android e iOS
-
-Os projetos nativos usam Capacitor e reaproveitam a build web do diretório `dist`.
-
-1. Gere a build e sincronize os arquivos e plugins com as duas plataformas:
-   ```bash
-   npm run mobile:sync
-   ```
-2. Abra a plataforma desejada:
-   ```bash
-   npx cap open android
-   npx cap open ios
-   ```
-
-No Android, o Android Studio e o emulador são opcionais. Para compilar e testar
-pela linha de comando em um aparelho físico, instale o JDK 21, o Android SDK
-(Platform e Build Tools 36) e o `adb`. Configure o ambiente e confirme que o
-aparelho, com a depuração USB autorizada, aparece como `device`:
+### Rodando local
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
-export ANDROID_HOME="$HOME/.local/share/android-sdk"
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
-adb devices
-npx cap run android
+npm install
+npm run dev
 ```
 
-O Android Studio continua sendo útil para usar emuladores e depurar o código
-nativo. O projeto iOS pode ser sincronizado em outros sistemas, mas sua
-compilação e execução exigem macOS com Xcode.
+Configure o `.env` com a URL do backend antes (veja `.env.example`). Pra empacotar o app Android via Capacitor, veja o workflow em `.github/workflows/release-android.yml`.
 
----
-*Construído para amantes de música que valorizam cada detalhe visual.*
+### Lançando uma nova versão
+
+```bash
+git tag v1.0.x
+git push origin v1.0.x
+```
+
+O GitHub Actions builda, assina e publica o APK automaticamente em [Releases](https://github.com/invencaosts/Synfonia-Front/releases).
