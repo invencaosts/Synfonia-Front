@@ -13,7 +13,7 @@ export default defineConfig({
     allowedHosts: true, // Allow ngrok and other external hosts
     proxy: {
       '/api': {
-        target: 'http://localhost:8090',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         // Backend valida o header Origin (CORS_ALLOWED_ORIGINS). O proxy do Vite
         // repassa o Origin real do navegador (ex: http://192.168.x.x:5173), que

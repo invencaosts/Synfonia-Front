@@ -12,8 +12,8 @@ const Logo = ({ size = 'md', className = '', id = 'logo' }) => {
   const barHeights = [10, 16, 24, 34, 20, 12, 28, 38, 22, 14, 26, 18];
 
   return (
-    <div 
-      className={`flex flex-col items-center justify-center gap-4 ${className}`}
+    <div
+      className={`flex flex-row items-end justify-center gap-3 ${className}`}
       style={{ viewTransitionName: `site-logo-${id}` }}
     >
       <h1 

@@ -57,7 +57,7 @@ const RegisterPage = () => {
       await authService.register(formData);
       // Login automático
       await authService.login(formData.email, formData.senha);
-      navigate('/');
+      navigate('/profile');
     } catch (err) {
       console.error('Registration/Login error:', err);
       const message = err.response?.data?.detalhe || 'Falha ao criar conta. Tente novamente.';

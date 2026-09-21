@@ -178,7 +178,7 @@ const AlbumDetailScreen = ({ album, onClose, onRate }) => {
             )}
 
             {!loading && tracks.length > 0 && (
-              <div className="max-h-[45vh] md:max-h-[60vh] overflow-y-auto pr-1 flex flex-col gap-2">
+              <div className="md:max-h-[60vh] md:overflow-y-auto pr-1 flex flex-col gap-2">
                 {tracks.map((track) => {
                   const tocandoAgora = currentTrack?.id === track.id && isPlaying;
                   return (
@@ -240,6 +240,10 @@ const AlbumDetailScreen = ({ album, onClose, onRate }) => {
                     </button>
                   );
                 })}
+                <div
+                  className="md:hidden shrink-0"
+                  style={{ height: 'calc(var(--mobile-nav-offset, 80px) + var(--player-offset, 0px) + 16px)' }}
+                />
               </div>
             )}
           </div>

@@ -15,7 +15,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useImport } from '../../hooks/useImport';
 import { isPreviewOnlyTrack } from '../../utils/musicSource';
 
-const FALLBACK_ARTWORK = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop';
+const FALLBACK_ARTWORK = '/artwork-fallback.svg';
 
 const LibraryPage = () => {
   const {

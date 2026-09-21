@@ -6,6 +6,9 @@ import RatingFormScreen from '../../components/AlbumRating/RatingFormScreen';
 import ShareResultScreen from '../../components/AlbumRating/ShareResultScreen';
 import AlbumDetailScreen from '../../components/AlbumRating/AlbumDetailScreen';
 import StarRating from '../../components/AlbumRating/StarRating';
+import ConnectAccountsPrompt from '../../components/ConnectAccountsPrompt';
+import { useAudio } from '../../hooks/useAudio';
+import { useYoutubeConnect } from '../../hooks/useYoutubeConnect';
 
 const AlbumRatingPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +22,10 @@ const AlbumRatingPage = () => {
 
   const [myRatings, setMyRatings] = useState([]);
   const [loadingMyRatings, setLoadingMyRatings] = useState(true);
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
+
+  const { isSpotifyConnected } = useAudio();
+  const { isConnected: isYoutubeConnected } = useYoutubeConnect();
 
   const user = authService.getCurrentUser();
   const preferredSource = user?.preferredMusicSource || 'ITUNES';
@@ -43,6 +50,10 @@ const AlbumRatingPage = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
+
+    if (!isSpotifyConnected && !isYoutubeConnected) {
+      setShowConnectPrompt(true);
+    }
 
     setLoading(true);
     setHasSearched(true);
@@ -194,6 +205,8 @@ const AlbumRatingPage = () => {
       {savedRating && (
         <ShareResultScreen rating={savedRating} onClose={() => setSavedRating(null)} />
       )}
+
+      <ConnectAccountsPrompt isOpen={showConnectPrompt} onClose={() => setShowConnectPrompt(false)} />
     </div>
   );
 };

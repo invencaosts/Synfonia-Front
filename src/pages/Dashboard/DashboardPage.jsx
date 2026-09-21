@@ -6,15 +6,19 @@ import { authService } from '../../services/authService';
 import { albumRatingService } from '../../services/albumRatingService';
 import { useAudio } from '../../hooks/useAudio';
 import { useTheme } from '../../hooks/useTheme';
+import { useYoutubeConnect } from '../../hooks/useYoutubeConnect';
 import { isPreviewOnlyTrack } from '../../utils/musicSource';
 import { getRecentAlbums } from '../../utils/recentAlbums';
 import AlbumDetailScreen from '../../components/AlbumRating/AlbumDetailScreen';
 import Select from '../../components/ui/Select';
 import RatingFormScreen from '../../components/AlbumRating/RatingFormScreen';
 import ShareResultScreen from '../../components/AlbumRating/ShareResultScreen';
+import ConnectAccountsPrompt from '../../components/ConnectAccountsPrompt';
 
 const DashboardPage = () => {
-  const { playTrack, currentTrack, isPlaying, addToQueue, playNext } = useAudio();
+  const { playTrack, currentTrack, isPlaying, addToQueue, playNext, isSpotifyConnected } = useAudio();
+  const { isConnected: isYoutubeConnected } = useYoutubeConnect();
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
   const [addedIds, setAddedIds] = useState(new Set());
   const { viewMode, toggleViewMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,6 +165,9 @@ const DashboardPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    if (!isSpotifyConnected && !isYoutubeConnected) {
+      setShowConnectPrompt(true);
+    }
     runSearch();
   };
 
@@ -727,6 +734,8 @@ const DashboardPage = () => {
       {savedRating && (
         <ShareResultScreen rating={savedRating} onClose={() => setSavedRating(null)} />
       )}
+
+      <ConnectAccountsPrompt isOpen={showConnectPrompt} onClose={() => setShowConnectPrompt(false)} />
     </div>
   );
 };

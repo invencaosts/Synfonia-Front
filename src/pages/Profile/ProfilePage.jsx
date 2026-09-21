@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAudio } from '../../hooks/useAudio';
+import { useYoutubeConnect } from '../../hooks/useYoutubeConnect';
 import { userService } from '../../services/userService';
 import { playlistService } from '../../services/playlistService';
 import { authService } from '../../services/authService';
@@ -33,6 +34,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
+import YoutubeConnectModal from '../../components/YoutubeConnectModal';
 
 const containsEmoji = (str) => {
   if (!str) return false;
@@ -103,8 +105,17 @@ const ProfilePage = () => {
     favorites,
     isFavoritesLoaded,
     refreshFavorites,
-    favoriteIds
+    favoriteIds,
+    connectSpotify,
+    isSpotifyConnected
   } = useAudio();
+  const {
+    isConnected: isYoutubeConnected,
+    deviceInfo: youtubeDeviceInfo,
+    status: youtubeAuthStatus,
+    connect: connectYoutube,
+    cancel: cancelYoutubeConnect
+  } = useYoutubeConnect();
   const isGuest = authService.isGuest();
 
   React.useEffect(() => {
@@ -602,6 +613,44 @@ const ProfilePage = () => {
           )}
         </motion.div>
       </header>
+
+      {!isGuest && (!isSpotifyConnected || !isYoutubeConnected) && (
+        <div className="flex flex-col md:flex-row md:items-center gap-4 bg-(--bg-card) p-6 rounded-3xl border border-(--border-subtle)">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-bold text-main">Conectar contas</h3>
+            <p className="text-xs text-dim mt-0.5">Importe playlists e curtidas de outros serviços.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!isSpotifyConnected && (
+              <button
+                type="button"
+                onClick={connectSpotify}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-500 text-xs font-bold hover:bg-green-500/20 transition-colors"
+              >
+                <Music2 size={15} className="shrink-0" />
+                Spotify
+              </button>
+            )}
+            {!isYoutubeConnected && (
+              <button
+                type="button"
+                onClick={connectYoutube}
+                disabled={youtubeAuthStatus === 'waiting'}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 text-xs font-bold hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Youtube size={15} className="shrink-0" />
+                YouTube Music
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <YoutubeConnectModal
+        deviceInfo={youtubeDeviceInfo}
+        status={youtubeAuthStatus}
+        onClose={cancelYoutubeConnect}
+      />
 
       {/* Stats Dashboard */}
       <div className="flex justify-center md:justify-start">
