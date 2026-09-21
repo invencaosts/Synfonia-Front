@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Logo = ({ size = 'md', className = '', id = 'logo' }) => {
+const Logo = ({ size = 'md', className = '', id = 'logo', stacked = false }) => {
   const sizes = {
     sm: { text: 'text-lg md:text-xl', wave: 'h-5 md:h-6', gap: 'gap-1', barWidth: 'w-0.5' },
     md: { text: 'text-2xl md:text-3xl', wave: 'h-8 md:h-10', gap: 'gap-1.5', barWidth: 'w-1' },
@@ -13,7 +13,7 @@ const Logo = ({ size = 'md', className = '', id = 'logo' }) => {
 
   return (
     <div
-      className={`flex flex-row items-end justify-center gap-3 ${className}`}
+      className={`flex ${stacked ? 'flex-col items-center gap-4' : 'flex-row items-end gap-3'} justify-center ${className}`}
       style={{ viewTransitionName: `site-logo-${id}` }}
     >
       <h1 

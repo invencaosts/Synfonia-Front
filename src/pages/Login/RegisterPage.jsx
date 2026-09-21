@@ -72,7 +72,7 @@ const RegisterPage = () => {
   return (
     <>
       <div className="flex flex-col items-center mb-6 md:mb-10 text-center">
-        <Logo size="lg" />
+        <Logo size="lg" stacked />
         <p className="text-dim mt-4 md:mt-6 text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium opacity-60 px-4">Junte-se ao Synfonia</p>
       </div>
 
