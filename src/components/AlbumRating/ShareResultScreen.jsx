@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Share2, X } from 'lucide-react';
+import { Download, Loader2, Share2, X } from 'lucide-react';
 import ShareCard from './ShareCard';
 import { captureNode, shareOrDownloadImage } from '../../utils/shareImage';
 
@@ -8,6 +8,11 @@ const ShareResultScreen = ({ rating, onClose }) => {
   const cardRef = useRef(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState(null);
+  // A capa vem via proxy do backend e às vezes demora muito; se capturar antes
+  // dela carregar, a imagem sai sem capa. Só libera os botões depois do load.
+  const [capaStatus, setCapaStatus] = useState(rating?.capaUrl ? 'carregando' : 'pronta');
+  const capaCarregando = capaStatus === 'carregando';
+  const bloqueado = processando || capaCarregando;
 
   if (!rating) return null;
 
@@ -78,27 +83,40 @@ const ShareResultScreen = ({ rating, onClose }) => {
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="relative z-10 flex flex-col items-center gap-6"
         >
-          <ShareCard ref={cardRef} rating={rating} />
+          <ShareCard
+            ref={cardRef}
+            rating={rating}
+            capaCarregando={capaCarregando}
+            onCapaLoad={() => setCapaStatus('pronta')}
+            onCapaError={() => setCapaStatus('erro')}
+          />
 
+          {capaStatus === 'erro' && !erro && (
+            <p className="text-sm text-yellow-400 text-center px-6">Não foi possível carregar a capa do álbum.</p>
+          )}
           {erro && <p className="text-sm text-red-400 text-center px-6">{erro}</p>}
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-xs sm:max-w-none px-6 sm:px-0">
             <button
               type="button"
               onClick={handleBaixar}
-              disabled={processando}
-              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 transition-colors disabled:opacity-40"
+              disabled={bloqueado}
+              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Download size={18} className="shrink-0" />
+              {bloqueado
+                ? <Loader2 size={18} className="shrink-0 animate-spin" />
+                : <Download size={18} className="shrink-0" />}
               Baixar imagem
             </button>
             <button
               type="button"
               onClick={handleCompartilhar}
-              disabled={processando}
-              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand hover:bg-brand/90 text-brand-contrast font-semibold px-5 py-3 transition-colors disabled:opacity-40"
+              disabled={bloqueado}
+              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand hover:bg-brand/90 text-brand-contrast font-semibold px-5 py-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Share2 size={18} className="shrink-0" />
+              {bloqueado
+                ? <Loader2 size={18} className="shrink-0 animate-spin" />
+                : <Share2 size={18} className="shrink-0" />}
               Compartilhar
             </button>
           </div>
