@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import { Loader2 } from 'lucide-react';
 import StarRating from './StarRating';
 
 // Imagens externas (CDN do Apple/YouTube) muitas vezes não liberam CORS,
@@ -29,7 +30,7 @@ const CORES = {
   cinza: 'rgba(255,255,255,0.25)',
 };
 
-const ShareCard = forwardRef(({ rating }, ref) => {
+const ShareCard = forwardRef(({ rating, capaCarregando, onCapaLoad, onCapaError }, ref) => {
   if (!rating) return null;
 
   const capaProxied = proxiedCapa(rating.capaUrl);
@@ -85,17 +86,39 @@ const ShareCard = forwardRef(({ rating }, ref) => {
         }}
       >
         {capaProxied && (
-          <img
-            src={capaProxied}
-            alt={rating.albumName}
-            style={{
-              width: 128,
-              height: 128,
-              borderRadius: 12,
-              objectFit: 'cover',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-            }}
-          />
+          <div style={{ position: 'relative', width: 128, height: 128 }}>
+            <img
+              src={capaProxied}
+              alt={rating.albumName}
+              onLoad={onCapaLoad}
+              onError={onCapaError}
+              style={{
+                width: 128,
+                height: 128,
+                borderRadius: 12,
+                objectFit: 'cover',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+                opacity: capaCarregando ? 0 : 1,
+              }}
+            />
+            {/* Só aparece antes da captura (botões ficam travados enquanto carrega). */}
+            {capaCarregando && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: CORES.brancoSuave,
+                }}
+              >
+                <Loader2 size={32} className="animate-spin" />
+              </div>
+            )}
+          </div>
         )}
 
         <div>
