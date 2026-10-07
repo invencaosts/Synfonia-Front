@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Loader2, Share2, X } from 'lucide-react';
+import { Check, Download, Link2, Loader2, Share2, X } from 'lucide-react';
 import ShareCard, { CARD_ALTURA, CARD_BLUR, CARD_LARGURA } from './ShareCard';
-import QRCode from 'qrcode';
 import { authService } from '../../services/authService';
 import { albumRatingService } from '../../services/albumRatingService';
 import { captureNode, prepararCapaCompartilhamento, shareOrDownloadImage } from '../../utils/shareImage';
@@ -19,7 +18,6 @@ const ShareResultScreen = ({ rating, onClose }) => {
     chave: chaveCompartilhamento,
     status: statusInicialCompartilhamento,
     url: null,
-    qrSrc: null,
   });
   const compartilhamentoAtual = compartilhamento.chave === chaveCompartilhamento
     ? compartilhamento
@@ -27,10 +25,10 @@ const ShareResultScreen = ({ rating, onClose }) => {
         chave: chaveCompartilhamento,
         status: statusInicialCompartilhamento,
         url: null,
-        qrSrc: null,
       };
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   // A capa (e o fundo desfocado gerado a partir dela) é baixada uma vez só, antes da captura.
   // Os botões só liberam quando as duas estão prontas: antes, o html2canvas baixava o fundo
   // de novo na hora de compartilhar e, se o proxy demorasse, a imagem saía sem fundo.
@@ -55,24 +53,10 @@ const ShareResultScreen = ({ rating, onClose }) => {
       try {
         const resposta = await albumRatingService.createPublicShare(rating.id);
         if (!resposta?.url) throw new Error('O backend não retornou o link público.');
-
-        try {
-          // Links assinados são longos e geram uma matriz densa. Mantemos fonte grande e
-          // quiet zone completa para o redimensionamento do html2canvas continuar legível.
-          const qrSrc = await QRCode.toDataURL(resposta.url, {
-            // QR v8 da URL atual tem 57 células contando a margem: 456 = 57 × 8.
-            width: 456,
-            margin: 4,
-            errorCorrectionLevel: 'M',
-          });
-          if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'pronto', url: resposta.url, qrSrc });
-        } catch (err) {
-          console.error('Erro ao gerar QR code:', err);
-          if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'erro-qr', url: resposta.url, qrSrc: null });
-        }
+        if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'pronto', url: resposta.url });
       } catch (err) {
         console.error('Erro ao criar link público da avaliação:', err);
-        if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'erro-link', url: null, qrSrc: null });
+        if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'erro-link', url: null });
       }
     })();
 
@@ -146,6 +130,18 @@ const ShareResultScreen = ({ rating, onClose }) => {
     }
   };
 
+  const handleCopiarLink = async () => {
+    if (!linkPublico) return;
+    try {
+      await navigator.clipboard.writeText(linkPublico);
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar link público:', err);
+      setErro('Não foi possível copiar o link.');
+    }
+  };
+
   return (
     <AnimatePresence>
       {/* Tela cheia de verdade: cobre até o miniplayer/navbar de baixo (não reserva espaço
@@ -180,7 +176,6 @@ const ShareResultScreen = ({ rating, onClose }) => {
             ref={cardRef}
             rating={rating}
             username={username}
-            qrSrc={compartilhamentoAtual.qrSrc}
             capaSrc={capa.capaSrc}
             fundoSrc={capa.fundoSrc}
             capaCarregando={capaCarregando}
@@ -193,10 +188,7 @@ const ShareResultScreen = ({ rating, onClose }) => {
             <p className="text-sm text-yellow-400 text-center px-6">Esta avaliação está oculta e será compartilhada sem link público.</p>
           )}
           {compartilhamentoAtual.status === 'erro-link' && (
-            <p className="text-sm text-yellow-400 text-center px-6">Não foi possível criar o link público. Você ainda pode compartilhar a imagem sem QR Code.</p>
-          )}
-          {compartilhamentoAtual.status === 'erro-qr' && (
-            <p className="text-sm text-yellow-400 text-center px-6">O link foi criado, mas o QR Code não pôde ser gerado. O link ainda será incluído ao compartilhar.</p>
+            <p className="text-sm text-yellow-400 text-center px-6">Não foi possível criar o link público. Você ainda pode compartilhar a imagem sem o link.</p>
           )}
           {erro && <p className="text-sm text-red-400 text-center px-6">{erro}</p>}
 
@@ -223,6 +215,18 @@ const ShareResultScreen = ({ rating, onClose }) => {
                 : <Share2 size={18} className="shrink-0" />}
               Compartilhar
             </button>
+            {linkPublico && (
+              <button
+                type="button"
+                onClick={handleCopiarLink}
+                className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white/10 hover:bg-white/20 text-white font-medium px-5 py-3 transition-colors"
+              >
+                {linkCopiado
+                  ? <Check size={18} className="shrink-0" />
+                  : <Link2 size={18} className="shrink-0" />}
+                {linkCopiado ? 'Link copiado' : 'Copiar link público'}
+              </button>
+            )}
           </div>
         </motion.div>
       </div>

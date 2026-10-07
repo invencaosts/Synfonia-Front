@@ -80,7 +80,7 @@ async function blobToBase64(blob) {
 }
 
 // text: legenda enviada junto da imagem (com o link da avaliação). Apps como WhatsApp/Telegram
-// mostram o link clicável; o Instagram Stories ignora o texto (aí vale o QR code da imagem).
+// mostram o link clicável; o Instagram Stories ignora o texto.
 export async function shareOrDownloadImage(blob, filename = 'avaliacao-album.png', { text } = {}) {
   if (Capacitor.isNativePlatform()) {
     const { Filesystem, Directory } = await import('@capacitor/filesystem');

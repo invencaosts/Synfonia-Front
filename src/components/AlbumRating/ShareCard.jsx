@@ -27,8 +27,7 @@ const CORES = {
 
 // capaSrc/fundoSrc são fontes locais (object URL / data URL) preparadas por
 // prepararCapaCompartilhamento: assim a captura não depende de rede nenhuma.
-// qrSrc: data URL do QR code com o link público da avaliação (null = sem link).
-const ShareCard = forwardRef(({ rating, username, qrSrc, capaSrc, fundoSrc, capaCarregando }, ref) => {
+const ShareCard = forwardRef(({ rating, username, capaSrc, fundoSrc, capaCarregando }, ref) => {
   if (!rating) return null;
 
   const tituloResumido = rating.titulo && rating.titulo.length > 100
@@ -155,30 +154,16 @@ const ShareCard = forwardRef(({ rating, username, qrSrc, capaSrc, fundoSrc, capa
 
         </div>
 
-        {/* Rodapé fora do fluxo centralizado: resenha longa não passa por cima do @ / QR. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 12 }}>
-          {qrSrc && (
-            <img
-              src={qrSrc}
-              alt=""
-              style={{
-                width: 88,
-                height: 88,
-                backgroundColor: CORES.branco,
-                imageRendering: 'pixelated',
-              }}
-            />
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center', transform: 'translateY(-4px)' }}>
-            {username && (
-              <span style={{ color: CORES.branco, fontSize: 13, fontWeight: 700 }}>
-                @{username}
-              </span>
-            )}
-            <span style={{ color: CORES.brancoFraco, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>
-              {qrSrc ? 'VEJA A AVALIAÇÃO NO SYNFONIA' : 'SYNFONIA'}
+        {/* Rodapé fora do fluxo centralizado: resenha longa não passa por cima do @. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 12 }}>
+          {username && (
+            <span style={{ color: CORES.branco, fontSize: 13, fontWeight: 700 }}>
+              @{username}
             </span>
-          </div>
+          )}
+          <span style={{ color: CORES.brancoFraco, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>
+            SYNFONIA
+          </span>
         </div>
       </div>
     </div>
