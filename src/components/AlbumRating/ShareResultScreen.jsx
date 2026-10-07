@@ -57,10 +57,12 @@ const ShareResultScreen = ({ rating, onClose }) => {
         if (!resposta?.url) throw new Error('O backend não retornou o link público.');
 
         try {
-          // Módulos pretos em fundo branco e margem mínima: lê bem mesmo pequeno no story.
+          // Links assinados são longos e geram uma matriz densa. Mantemos fonte grande e
+          // quiet zone completa para o redimensionamento do html2canvas continuar legível.
           const qrSrc = await QRCode.toDataURL(resposta.url, {
-            width: 192,
-            margin: 1,
+            // QR v8 da URL atual tem 57 células contando a margem: 456 = 57 × 8.
+            width: 456,
+            margin: 4,
             errorCorrectionLevel: 'M',
           });
           if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'pronto', url: resposta.url, qrSrc });

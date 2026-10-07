@@ -161,7 +161,12 @@ const ShareCard = forwardRef(({ rating, username, qrSrc, capaSrc, fundoSrc, capa
             <img
               src={qrSrc}
               alt=""
-              style={{ width: 48, height: 48, borderRadius: 6, backgroundColor: CORES.branco, padding: 3 }}
+              style={{
+                width: 88,
+                height: 88,
+                backgroundColor: CORES.branco,
+                imageRendering: 'pixelated',
+              }}
             />
           )}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center', transform: 'translateY(-4px)' }}>
