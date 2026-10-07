@@ -6,7 +6,7 @@ import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
 import { spotifyService } from '../../services/spotifyService';
 import { useYoutubeConnect } from '../../hooks/useYoutubeConnect';
-import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut, Search, Youtube } from 'lucide-react';
+import { Sun, Moon, Zap, Palette, Monitor, Layout, Type, Accessibility, Music2, Repeat, AlertTriangle, ShieldCheck, Eye, EyeOff, AlertCircle, LogOut, Search, Youtube, Globe, Star, Heart } from 'lucide-react';
 import ColorPicker from '../../components/ui/ColorPicker';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
@@ -35,6 +35,11 @@ const SettingsPage = () => {
   const [user, setUser] = useState(authService.getCurrentUser());
   const [showPersonalName, setShowPersonalName] = useState(user?.showPersonalName ?? true);
   const [showSpotifyActivity, setShowSpotifyActivity] = useState(user?.showSpotifyActivity ?? true);
+  const [communityPrivacy, setCommunityPrivacy] = useState({
+    perfilPublico: user?.perfilPublico ?? true,
+    showAvaliacoes: user?.showAvaliacoes ?? true,
+    showCurtidas: user?.showCurtidas ?? true,
+  });
   const [preferredMusicSource, setPreferredMusicSource] = useState(user?.preferredMusicSource || 'ITUNES');
   const [savingMusicSource, setSavingMusicSource] = useState(false);
   const { isConnected: isYoutubeConnected, deviceInfo: youtubeDeviceInfo, status: youtubeAuthStatus, connect: handleConnectYoutube, cancel: handleCancelYoutubeConnect, disconnect: disconnectYoutube } = useYoutubeConnect();
@@ -52,6 +57,20 @@ const SettingsPage = () => {
           localStorage.setItem('user', JSON.stringify(updatedUser));
           window.dispatchEvent(new Event('userUpdate'));
           setUser(updatedUser);
+        }
+      } else if (key in communityPrivacy) {
+        const newValue = !communityPrivacy[key];
+        setCommunityPrivacy(prev => ({ ...prev, [key]: newValue }));
+        if (!isGuest) {
+          try {
+            const updatedUser = await userService.updateProfile({ [key]: newValue });
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.dispatchEvent(new Event('userUpdate'));
+            setUser(updatedUser);
+          } catch (err) {
+            setCommunityPrivacy(prev => ({ ...prev, [key]: !newValue }));
+            throw err;
+          }
         }
       } else if (key === 'spotifyActivity') {
         const newValue = !showSpotifyActivity;
@@ -704,6 +723,37 @@ const SettingsPage = () => {
               <div className={`w-4 h-4 rounded-full absolute top-1 transition-all duration-300 stroke-white ${!isGuest && showSpotifyActivity ? 'right-1 bg-white' : 'left-1 bg-white'}`} />
             </button>
           </div>
+
+          {[
+            { key: 'perfilPublico', icon: Globe, title: 'Perfil na Comunidade', description: 'Outros usuários podem encontrar e ver seu perfil' },
+            { key: 'showAvaliacoes', icon: Star, title: 'Avaliações Públicas', description: 'Mostrar suas avaliações de álbum no perfil' },
+            { key: 'showCurtidas', icon: Heart, title: 'Músicas Curtidas Públicas', description: 'Mostrar suas músicas curtidas no perfil' },
+          ].map(({ key, icon: Icon, title, description }) => {
+            const enabled = !isGuest && communityPrivacy[key];
+            const dependsOnProfile = key !== 'perfilPublico' && !communityPrivacy.perfilPublico;
+            return (
+              <div key={key} className={`p-6 rounded-[24px] bg-(--bg-card) border border-(--border-subtle) flex items-center justify-between group ${dependsOnProfile ? 'opacity-60' : 'opacity-100'}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon size={20} className="text-dim shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-main">{title}</span>
+                    <span className="text-[10px] text-dim">
+                      {dependsOnProfile ? 'Seu perfil está privado, ninguém vê isso' : description}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handlePrivacyToggle(key)}
+                  disabled={isGuest}
+                  aria-pressed={enabled}
+                  aria-label={title}
+                  className={`w-12 h-6 rounded-full relative shrink-0 transition-colors duration-300 ${enabled ? 'bg-brand shadow-[0_0_10px_rgba(var(--color-brand-rgb),0.3)]' : 'bg-(--bg-side)'} ${isGuest ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className={`w-4 h-4 rounded-full absolute top-1 transition-all duration-300 ${enabled ? 'right-1 bg-brand-contrast' : 'left-1 bg-white'}`} />
+                </button>
+              </div>
+            );
+          })}
 
           {!isGuest && (
             <div className="col-span-1 md:col-span-2 p-6 rounded-[24px] bg-red-500/5 border border-red-500/20 space-y-4">
