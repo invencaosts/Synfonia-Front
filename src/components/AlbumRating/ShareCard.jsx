@@ -5,7 +5,7 @@ import StarRating from './StarRating';
 // Dimensões do card e do blur do fundo (usadas também para gerar o fundo desfocado).
 export const CARD_LARGURA = 270;
 export const CARD_ALTURA = 480;
-export const CARD_BLUR = 24;
+export const CARD_BLUR = 6;
 
 // IMPORTANTE: este componente é capturado pelo html2canvas (utils/shareImage.js).
 // html2canvas não entende funções CSS modernas que o Tailwind v4 gera pra cores
