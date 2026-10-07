@@ -43,7 +43,8 @@ api.interceptors.response.use(
         localStorage.removeItem('isGuest');
         // Não resetamos o token aqui pois ele está em um cookie HttpOnly que deve ser limpo pelo servidor
         // No entanto, podemos redirecionar para o login
-        if (!window.location.pathname.startsWith('/login')) {
+        const isPublicRatingPage = /^\/avaliacao\/[^/]+\/?$/.test(window.location.pathname);
+        if (!isPublicRatingPage && !window.location.pathname.startsWith('/login')) {
           window.location.href = '/login?session_expired=true';
         }
       }

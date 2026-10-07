@@ -79,7 +79,9 @@ async function blobToBase64(blob) {
   });
 }
 
-export async function shareOrDownloadImage(blob, filename = 'avaliacao-album.png') {
+// text: legenda enviada junto da imagem (com o link da avaliação). Apps como WhatsApp/Telegram
+// mostram o link clicável; o Instagram Stories ignora o texto (aí vale o QR code da imagem).
+export async function shareOrDownloadImage(blob, filename = 'avaliacao-album.png', { text } = {}) {
   if (Capacitor.isNativePlatform()) {
     const { Filesystem, Directory } = await import('@capacitor/filesystem');
     const { Share } = await import('@capacitor/share');
@@ -94,6 +96,7 @@ export async function shareOrDownloadImage(blob, filename = 'avaliacao-album.png
     await Share.share({
       title: 'Minha avaliação no Synfonia',
       dialogTitle: 'Compartilhar avaliação',
+      text,
       files: [saved.uri],
     });
     return;
@@ -106,6 +109,7 @@ export async function shareOrDownloadImage(blob, filename = 'avaliacao-album.png
       await navigator.share({
         files: [file],
         title: 'Minha avaliação no Synfonia',
+        ...(text ? { text } : {}),
       });
       return;
     } catch {

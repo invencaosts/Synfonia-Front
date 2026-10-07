@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import LoginPage from './pages/Login/LoginPage';
 import RegisterPage from './pages/Login/RegisterPage';
@@ -11,6 +11,7 @@ import AlbumRatingPage from './pages/AlbumRating/AlbumRatingPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import CommunityPage from './pages/Community/CommunityPage';
 import PublicProfilePage from './pages/Community/PublicProfilePage';
+import AvaliacaoPublicaPage from './pages/Community/AvaliacaoPublicaPage';
 import ModerationPage from './pages/Moderation/ModerationPage';
 import SpotifyCallback from './pages/SpotifyCallback';
 import PrivateRoute from './routes/PrivateRoute';
@@ -22,9 +23,42 @@ import { ImportProvider } from './context/ImportContext';
 import AudioPlayer from './components/AudioPlayer/AudioPlayer';
 import { authService } from './services/authService';
 import CookieConsent from './components/ui/CookieConsent';
+import { Capacitor } from '@capacitor/core';
+import { rotaDoDeepLink } from './utils/publicLinks';
+
+// Links do QR code / da legenda compartilhada (https://<api>/avaliacao/{id} ou synfonia://avaliacao/{id})
+// chegam aqui quando o app está instalado: tanto com o app aberto quanto abrindo do zero.
+const useDeepLinks = () => {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return undefined;
+        let listener = null;
+        let cancelado = false;
+
+        (async () => {
+            const { App } = await import('@capacitor/app');
+            const abrir = (url) => {
+                const rota = url && rotaDoDeepLink(url);
+                if (rota) navigate(rota);
+            };
+            const launch = await App.getLaunchUrl();
+            if (!cancelado) abrir(launch?.url);
+            const handle = await App.addListener('appUrlOpen', ({ url }) => abrir(url));
+            if (cancelado) handle.remove();
+            else listener = handle;
+        })().catch((err) => console.error('Erro ao configurar deep links:', err));
+
+        return () => {
+            cancelado = true;
+            listener?.remove();
+        };
+    }, [navigate]);
+};
 
 const AppContent = () => {
     const [isLoading, setIsLoading] = useState(true);
+    useDeepLinks();
   
     useEffect(() => {
         const checkAuth = async () => {
@@ -75,6 +109,11 @@ const AppContent = () => {
                     <Route path="/moderacao" element={<ModerationPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                 </Route>
+            </Route>
+
+            {/* Aberta pelo link compartilhado: não exige login (logado, fica dentro do layout normal). */}
+            <Route element={authService.isAuthenticated() ? <MainLayout /> : <div className="min-h-screen bg-(--bg-main)"><Outlet /></div>}>
+                <Route path="/avaliacao/:id" element={<AvaliacaoPublicaPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

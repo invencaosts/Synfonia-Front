@@ -2,10 +2,33 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Loader2, Share2, X } from 'lucide-react';
 import ShareCard, { CARD_ALTURA, CARD_BLUR, CARD_LARGURA } from './ShareCard';
+import QRCode from 'qrcode';
+import { authService } from '../../services/authService';
+import { albumRatingService } from '../../services/albumRatingService';
 import { captureNode, prepararCapaCompartilhamento, shareOrDownloadImage } from '../../utils/shareImage';
 
 const ShareResultScreen = ({ rating, onClose }) => {
   const cardRef = useRef(null);
+  const usuario = authService.getCurrentUser();
+  const username = usuario?.username;
+  const chaveCompartilhamento = `${rating?.id || ''}:${Boolean(rating?.oculto)}`;
+  const statusInicialCompartilhamento = rating?.oculto
+    ? 'indisponivel'
+    : rating?.id ? 'carregando' : 'erro-link';
+  const [compartilhamento, setCompartilhamento] = useState({
+    chave: chaveCompartilhamento,
+    status: statusInicialCompartilhamento,
+    url: null,
+    qrSrc: null,
+  });
+  const compartilhamentoAtual = compartilhamento.chave === chaveCompartilhamento
+    ? compartilhamento
+    : {
+        chave: chaveCompartilhamento,
+        status: statusInicialCompartilhamento,
+        url: null,
+        qrSrc: null,
+      };
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState(null);
   // A capa (e o fundo desfocado gerado a partir dela) é baixada uma vez só, antes da captura.
@@ -18,7 +41,41 @@ const ShareResultScreen = ({ rating, onClose }) => {
   }));
   const capaStatus = capa.status;
   const capaCarregando = capaStatus === 'carregando';
-  const bloqueado = processando || capaCarregando;
+  const linkPublico = compartilhamentoAtual.url;
+  const bloqueado = processando || capaCarregando || compartilhamentoAtual.status === 'carregando';
+
+  useEffect(() => {
+    if (!rating?.id || rating.oculto) {
+      return undefined;
+    }
+
+    let cancelado = false;
+
+    (async () => {
+      try {
+        const resposta = await albumRatingService.createPublicShare(rating.id);
+        if (!resposta?.url) throw new Error('O backend não retornou o link público.');
+
+        try {
+          // Módulos pretos em fundo branco e margem mínima: lê bem mesmo pequeno no story.
+          const qrSrc = await QRCode.toDataURL(resposta.url, {
+            width: 192,
+            margin: 1,
+            errorCorrectionLevel: 'M',
+          });
+          if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'pronto', url: resposta.url, qrSrc });
+        } catch (err) {
+          console.error('Erro ao gerar QR code:', err);
+          if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'erro-qr', url: resposta.url, qrSrc: null });
+        }
+      } catch (err) {
+        console.error('Erro ao criar link público da avaliação:', err);
+        if (!cancelado) setCompartilhamento({ chave: chaveCompartilhamento, status: 'erro-link', url: null, qrSrc: null });
+      }
+    })();
+
+    return () => { cancelado = true; };
+  }, [chaveCompartilhamento, rating?.id, rating?.oculto]);
 
   useEffect(() => {
     const capaUrl = rating?.capaUrl;
@@ -78,7 +135,9 @@ const ShareResultScreen = ({ rating, onClose }) => {
     const blob = await gerarImagem();
     if (!blob) return;
     try {
-      await shareOrDownloadImage(blob, `${rating.albumName}-avaliacao.png`);
+      await shareOrDownloadImage(blob, `${rating.albumName}-avaliacao.png`, {
+        text: linkPublico ? `Minha avaliação de ${rating.albumName} no Synfonia: ${linkPublico}` : undefined,
+      });
     } catch (err) {
       console.error('Erro ao compartilhar imagem:', err);
       setErro('Não foi possível compartilhar a imagem.');
@@ -118,6 +177,8 @@ const ShareResultScreen = ({ rating, onClose }) => {
           <ShareCard
             ref={cardRef}
             rating={rating}
+            username={username}
+            qrSrc={compartilhamentoAtual.qrSrc}
             capaSrc={capa.capaSrc}
             fundoSrc={capa.fundoSrc}
             capaCarregando={capaCarregando}
@@ -125,6 +186,15 @@ const ShareResultScreen = ({ rating, onClose }) => {
 
           {capaStatus === 'erro' && !erro && (
             <p className="text-sm text-yellow-400 text-center px-6">Não foi possível carregar a capa do álbum.</p>
+          )}
+          {compartilhamentoAtual.status === 'indisponivel' && rating.oculto && (
+            <p className="text-sm text-yellow-400 text-center px-6">Esta avaliação está oculta e será compartilhada sem link público.</p>
+          )}
+          {compartilhamentoAtual.status === 'erro-link' && (
+            <p className="text-sm text-yellow-400 text-center px-6">Não foi possível criar o link público. Você ainda pode compartilhar a imagem sem QR Code.</p>
+          )}
+          {compartilhamentoAtual.status === 'erro-qr' && (
+            <p className="text-sm text-yellow-400 text-center px-6">O link foi criado, mas o QR Code não pôde ser gerado. O link ainda será incluído ao compartilhar.</p>
           )}
           {erro && <p className="text-sm text-red-400 text-center px-6">{erro}</p>}
 

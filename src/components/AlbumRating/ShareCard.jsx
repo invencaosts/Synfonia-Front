@@ -27,7 +27,8 @@ const CORES = {
 
 // capaSrc/fundoSrc são fontes locais (object URL / data URL) preparadas por
 // prepararCapaCompartilhamento: assim a captura não depende de rede nenhuma.
-const ShareCard = forwardRef(({ rating, capaSrc, fundoSrc, capaCarregando }, ref) => {
+// qrSrc: data URL do QR code com o link público da avaliação (null = sem link).
+const ShareCard = forwardRef(({ rating, username, qrSrc, capaSrc, fundoSrc, capaCarregando }, ref) => {
   if (!rating) return null;
 
   const tituloResumido = rating.titulo && rating.titulo.length > 100
@@ -89,62 +90,90 @@ const ShareCard = forwardRef(({ rating, capaSrc, fundoSrc, capaCarregando }, ref
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: 20,
-          padding: '0 24px',
+          padding: '0 24px 18px',
           textAlign: 'center',
         }}
       >
-        {rating.capaUrl && (
-          <div style={{ position: 'relative', width: 128, height: 128 }}>
-            {capaSrc && <img
-              src={capaSrc}
-              alt={rating.albumName}
-              style={{
-                width: 128,
-                height: 128,
-                borderRadius: 12,
-                objectFit: 'cover',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-              }}
-            />}
-            {/* Só aparece antes da captura (botões ficam travados enquanto carrega). */}
-            {capaCarregando && (
-              <div
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 20,
+          }}
+        >
+          {rating.capaUrl && (
+            <div style={{ position: 'relative', width: 128, height: 128 }}>
+              {capaSrc && <img
+                src={capaSrc}
+                alt={rating.albumName}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: 128,
+                  height: 128,
                   borderRadius: 12,
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  color: CORES.brancoSuave,
+                  objectFit: 'cover',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
                 }}
-              >
-                <Loader2 size={32} className="animate-spin" />
-              </div>
-            )}
-          </div>
-        )}
+              />}
+              {/* Só aparece antes da captura (botões ficam travados enquanto carrega). */}
+              {capaCarregando && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: CORES.brancoSuave,
+                  }}
+                >
+                  <Loader2 size={32} className="animate-spin" />
+                </div>
+              )}
+            </div>
+          )}
 
-        <div>
-          <p style={{ color: CORES.branco, fontWeight: 700, fontSize: 18, lineHeight: 1.2, margin: 0 }}>
-            {rating.albumName}
-          </p>
-          <p style={{ color: CORES.brancoSuave, fontSize: 14, marginTop: 4 }}>{rating.artista}</p>
+          <div>
+            <p style={{ color: CORES.branco, fontWeight: 700, fontSize: 18, lineHeight: 1.2, margin: 0 }}>
+              {rating.albumName}
+            </p>
+            <p style={{ color: CORES.brancoSuave, fontSize: 14, marginTop: 4 }}>{rating.artista}</p>
+          </div>
+
+          <StarRating value={rating.nota} readOnly size={24} filledColor={CORES.roxo} emptyColor={CORES.cinza} />
+
+          {tituloResumido && (
+            <p style={{ color: CORES.brancoResenha, fontSize: 14, fontStyle: 'italic', lineHeight: 1.5 }}>
+              “{tituloResumido}”
+            </p>
+          )}
+
         </div>
 
-        <StarRating value={rating.nota} readOnly size={24} filledColor={CORES.roxo} emptyColor={CORES.cinza} />
-
-        {tituloResumido && (
-          <p style={{ color: CORES.brancoResenha, fontSize: 14, fontStyle: 'italic', lineHeight: 1.5 }}>
-            “{tituloResumido}”
-          </p>
-        )}
-
-        <div style={{ position: 'absolute', bottom: 20, color: CORES.brancoFraco, fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>
-          SYNFONIA
+        {/* Rodapé fora do fluxo centralizado: resenha longa não passa por cima do @ / QR. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 12 }}>
+          {qrSrc && (
+            <img
+              src={qrSrc}
+              alt=""
+              style={{ width: 48, height: 48, borderRadius: 6, backgroundColor: CORES.branco, padding: 3 }}
+            />
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center', transform: 'translateY(-4px)' }}>
+            {username && (
+              <span style={{ color: CORES.branco, fontSize: 13, fontWeight: 700 }}>
+                @{username}
+              </span>
+            )}
+            <span style={{ color: CORES.brancoFraco, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>
+              {qrSrc ? 'VEJA A AVALIAÇÃO NO SYNFONIA' : 'SYNFONIA'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
