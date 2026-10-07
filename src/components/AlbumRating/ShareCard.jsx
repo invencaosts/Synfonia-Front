@@ -2,15 +2,10 @@ import React, { forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import StarRating from './StarRating';
 
-// Imagens externas (CDN do Apple/YouTube) muitas vezes não liberam CORS,
-// o que "suja" o canvas e faz a captura (html2canvas) falhar silenciosamente
-// — por isso sempre carregamos a capa via proxy do próprio backend (mesma
-// origem, sem CORS).
-const proxiedCapa = (url) => {
-  if (!url) return url;
-  const base = import.meta.env.VITE_API_URL || '/api/v1';
-  return `${base}/musicas/proxy-imagem?url=${encodeURIComponent(url)}`;
-};
+// Dimensões do card e do blur do fundo (usadas também para gerar o fundo desfocado).
+export const CARD_LARGURA = 270;
+export const CARD_ALTURA = 480;
+export const CARD_BLUR = 24;
 
 // IMPORTANTE: este componente é capturado pelo html2canvas (utils/shareImage.js).
 // html2canvas não entende funções CSS modernas que o Tailwind v4 gera pra cores
@@ -30,10 +25,10 @@ const CORES = {
   cinza: 'rgba(255,255,255,0.25)',
 };
 
-const ShareCard = forwardRef(({ rating, capaCarregando, onCapaLoad, onCapaError }, ref) => {
+// capaSrc/fundoSrc são fontes locais (object URL / data URL) preparadas por
+// prepararCapaCompartilhamento: assim a captura não depende de rede nenhuma.
+const ShareCard = forwardRef(({ rating, capaSrc, fundoSrc, capaCarregando }, ref) => {
   if (!rating) return null;
-
-  const capaProxied = proxiedCapa(rating.capaUrl);
 
   const tituloResumido = rating.titulo && rating.titulo.length > 100
     ? `${rating.titulo.slice(0, 100)}…`
@@ -44,26 +39,41 @@ const ShareCard = forwardRef(({ rating, capaCarregando, onCapaLoad, onCapaError 
       ref={ref}
       style={{
         position: 'relative',
-        width: 270,
-        height: 480,
+        width: CARD_LARGURA,
+        height: CARD_ALTURA,
         borderRadius: 24,
         overflow: 'hidden',
         userSelect: 'none',
         backgroundColor: '#09090b',
       }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `url(${capaProxied})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          transform: 'scale(1.1)',
-          filter: 'blur(24px)',
-          opacity: 0.6,
-        }}
-      />
+      {fundoSrc ? (
+        // Fundo já desfocado no canvas: sai igual na tela e na imagem exportada
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${fundoSrc})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.6,
+          }}
+        />
+      ) : capaSrc && (
+        // Navegador sem ctx.filter: blur só via CSS (o html2canvas exporta sem desfoque)
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${capaSrc})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            transform: 'scale(1.1)',
+            filter: `blur(${CARD_BLUR}px)`,
+            opacity: 0.6,
+          }}
+        />
+      )}
       <div
         style={{
           position: 'absolute',
@@ -85,22 +95,19 @@ const ShareCard = forwardRef(({ rating, capaCarregando, onCapaLoad, onCapaError 
           textAlign: 'center',
         }}
       >
-        {capaProxied && (
+        {rating.capaUrl && (
           <div style={{ position: 'relative', width: 128, height: 128 }}>
-            <img
-              src={capaProxied}
+            {capaSrc && <img
+              src={capaSrc}
               alt={rating.albumName}
-              onLoad={onCapaLoad}
-              onError={onCapaError}
               style={{
                 width: 128,
                 height: 128,
                 borderRadius: 12,
                 objectFit: 'cover',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-                opacity: capaCarregando ? 0 : 1,
               }}
-            />
+            />}
             {/* Só aparece antes da captura (botões ficam travados enquanto carrega). */}
             {capaCarregando && (
               <div

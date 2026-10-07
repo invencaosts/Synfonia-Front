@@ -1,18 +1,50 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Loader2, Share2, X } from 'lucide-react';
-import ShareCard from './ShareCard';
-import { captureNode, shareOrDownloadImage } from '../../utils/shareImage';
+import ShareCard, { CARD_ALTURA, CARD_BLUR, CARD_LARGURA } from './ShareCard';
+import { captureNode, prepararCapaCompartilhamento, shareOrDownloadImage } from '../../utils/shareImage';
 
 const ShareResultScreen = ({ rating, onClose }) => {
   const cardRef = useRef(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState(null);
-  // A capa vem via proxy do backend e às vezes demora muito; se capturar antes
-  // dela carregar, a imagem sai sem capa. Só libera os botões depois do load.
-  const [capaStatus, setCapaStatus] = useState(rating?.capaUrl ? 'carregando' : 'pronta');
+  // A capa (e o fundo desfocado gerado a partir dela) é baixada uma vez só, antes da captura.
+  // Os botões só liberam quando as duas estão prontas: antes, o html2canvas baixava o fundo
+  // de novo na hora de compartilhar e, se o proxy demorasse, a imagem saía sem fundo.
+  const [capa, setCapa] = useState(() => ({
+    status: rating?.capaUrl ? 'carregando' : 'pronta',
+    capaSrc: null,
+    fundoSrc: null,
+  }));
+  const capaStatus = capa.status;
   const capaCarregando = capaStatus === 'carregando';
   const bloqueado = processando || capaCarregando;
+
+  useEffect(() => {
+    const capaUrl = rating?.capaUrl;
+    if (!capaUrl) return undefined;
+    let cancelado = false;
+    let objectUrl = null;
+
+    prepararCapaCompartilhamento(capaUrl, { largura: CARD_LARGURA, altura: CARD_ALTURA, blurPx: CARD_BLUR })
+      .then(({ capaSrc, fundoSrc }) => {
+        objectUrl = capaSrc;
+        if (cancelado) {
+          URL.revokeObjectURL(capaSrc);
+          return;
+        }
+        setCapa({ status: 'pronta', capaSrc, fundoSrc });
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar a capa para compartilhar:', err);
+        if (!cancelado) setCapa({ status: 'erro', capaSrc: null, fundoSrc: null });
+      });
+
+    return () => {
+      cancelado = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [rating?.capaUrl]);
 
   if (!rating) return null;
 
@@ -86,9 +118,9 @@ const ShareResultScreen = ({ rating, onClose }) => {
           <ShareCard
             ref={cardRef}
             rating={rating}
+            capaSrc={capa.capaSrc}
+            fundoSrc={capa.fundoSrc}
             capaCarregando={capaCarregando}
-            onCapaLoad={() => setCapaStatus('pronta')}
-            onCapaError={() => setCapaStatus('erro')}
           />
 
           {capaStatus === 'erro' && !erro && (
