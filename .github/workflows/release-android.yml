@@ -38,8 +38,9 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_PUBLIC_URL: https://synfonia.invencaodev.com
           VITE_SPOTIFY_CLIENT_ID: ${{ secrets.VITE_SPOTIFY_CLIENT_ID }}
-          VITE_SPOTIFY_REDIRECT_URI: http://127.0.0.1:5173/callback
+          VITE_SPOTIFY_REDIRECT_URI: https://synfonia.invencaodev.com/callback
 
       - name: Sync Capacitor Android
         run: npx cap sync android
