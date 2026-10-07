@@ -9,6 +9,9 @@ import ProfilePage from './pages/Profile/ProfilePage';
 import PlaylistsPage from './pages/Playlists/PlaylistsPage';
 import AlbumRatingPage from './pages/AlbumRating/AlbumRatingPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import CommunityPage from './pages/Community/CommunityPage';
+import PublicProfilePage from './pages/Community/PublicProfilePage';
+import ModerationPage from './pages/Moderation/ModerationPage';
 import SpotifyCallback from './pages/SpotifyCallback';
 import PrivateRoute from './routes/PrivateRoute';
 import MainLayout from './layouts/MainLayout';
@@ -67,6 +70,9 @@ const AppContent = () => {
                     <Route path="/playlists" element={<PlaylistsPage />} />
                     <Route path="/avaliar" element={<AlbumRatingPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/comunidade" element={<CommunityPage />} />
+                    <Route path="/u/:username" element={<PublicProfilePage />} />
+                    <Route path="/moderacao" element={<ModerationPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                 </Route>
             </Route>

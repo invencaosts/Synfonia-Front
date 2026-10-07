@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   User, 
   Settings, 
@@ -30,6 +31,8 @@ import { userService } from '../../services/userService';
 import { playlistService } from '../../services/playlistService';
 import { authService } from '../../services/authService';
 import { musicService } from '../../services/musicService';
+import { publicProfilePath } from '../../services/communityService';
+import RoleBadges from '../../components/Moderation/RoleBadges';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -66,6 +69,7 @@ const AVATAR_PRESETS = [
 const NAME_REGEX = /^[a-zA-Z0-9_ ]{3,20}$/;
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
   const [user, setUser] = React.useState(authService.getCurrentUser());
   const [showAvatars, setShowAvatars] = React.useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
@@ -321,7 +325,8 @@ const ProfilePage = () => {
   };
 
   const handleShare = () => {
-    const profileUrl = `${window.location.origin}/profile/${user?.id || 'me'}`;
+    if (!user?.username) return;
+    const profileUrl = `${window.location.origin}${publicProfilePath(user.username)}`;
     navigator.clipboard.writeText(profileUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -485,12 +490,7 @@ const ProfilePage = () => {
                       <Calendar size={14} className="shrink-0" />
                       <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Membro desde {new Date(user?.dataCriacao).getFullYear()}</span>
                     </div>
-                    {user?.papel === 'ADMIN' && (
-                       <div className="flex items-center gap-1.5 px-2 py-0.5 bg-brand/10 text-brand rounded-full border border-brand/20">
-                        <ShieldCheck size={12} className="shrink-0" />
-                        <span className="text-[9px] font-black uppercase tracking-tighter">Administrador</span>
-                      </div>
-                    )}
+                    <RoleBadges roles={user?.roles} />
                   </div>
                 </div>
 
@@ -761,11 +761,19 @@ const ProfilePage = () => {
             </h3>
             <div className="space-y-4">
               {user?.username && (
-                <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between group">
-                  <div>
+                <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between gap-3 group">
+                  <div className="min-w-0">
                     <p className="text-[10px] text-dim/60 uppercase font-black tracking-widest mb-1">Meu user</p>
-                    <p className="text-main font-bold text-sm">@{user.username}</p>
+                    <p className="text-main font-bold text-sm truncate">@{user.username}</p>
                   </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(publicProfilePath(user.username))}
+                    icon={Eye}
+                    className="shrink-0 px-3! py-1.5! md:px-4! md:py-2! text-[10px] font-bold text-brand-legible! bg-brand/10! border-brand/20! hover:bg-brand/20!"
+                  >
+                    <span className="hidden md:inline">Ver como público</span>
+                  </Button>
                 </div>
               )}
               <div className="p-4 bg-brand/5 rounded-2xl border border-(--border-subtle) flex items-center justify-between gap-3 group">

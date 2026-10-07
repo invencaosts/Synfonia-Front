@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { NavLink, useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { Music, LayoutDashboard, Heart, Settings, LogOut, User, ListMusic, Instagram, Linkedin, Star } from 'lucide-react';
+import { Music, LayoutDashboard, Heart, Settings, LogOut, User, ListMusic, Instagram, Linkedin, Star, Users, ShieldCheck } from 'lucide-react';
+import { PERMISSOES, hasPermission } from '../utils/permissions';
 import { authService } from '../services/authService';
 import Logo from '../components/Logo';
 import { useAudio } from '../hooks/useAudio';
@@ -48,14 +49,21 @@ const MainLayout = () => {
     navigate('/login');
   };
 
+  const canModerate = !authService.isGuest() && hasPermission(user, PERMISSOES.PAINEL_MODERACAO_ACESSAR);
+
   const navItems = [
     { icon: LayoutDashboard, label: 'Início', shortLabel: 'Início', path: '/' },
     { icon: Heart, label: 'Músicas Curtidas', shortLabel: 'Curtidas', path: '/library' },
     { icon: ListMusic, label: 'Playlists', shortLabel: 'Playlists', path: '/playlists' },
     { icon: Star, label: 'Avaliar Álbum', shortLabel: 'Avaliar', path: '/avaliar' },
+    { icon: Users, label: 'Comunidade', shortLabel: 'Social', path: '/comunidade' },
     { icon: User, label: 'Perfil', shortLabel: 'Perfil', path: '/profile' },
-    { icon: Settings, label: 'Configurações', shortLabel: 'Ajustes', path: '/settings' },
+    // No celular, Configurações sai da barra inferior (falta espaço) e vira ícone no topo
+    { icon: Settings, label: 'Configurações', shortLabel: 'Ajustes', path: '/settings', hideOnMobileBar: true },
+    ...(canModerate ? [{ icon: ShieldCheck, label: 'Moderação', shortLabel: 'Moderação', path: '/moderacao', hideOnMobileBar: true }] : []),
   ];
+
+  const mobileNavItems = navItems.filter(item => !item.hideOnMobileBar);
 
   const handleProfileClick = () => {
     navigate('/profile');
@@ -207,6 +215,29 @@ const MainLayout = () => {
               </div>
             </div>
 
+            {canModerate && (
+              <NavLink
+                to="/moderacao"
+                aria-label="Moderação"
+                className={({ isActive }) =>
+                  `md:hidden w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${isActive ? 'bg-brand/20 text-brand-legible' : 'text-dim hover:text-main'}`
+                }
+              >
+                <ShieldCheck size={18} />
+              </NavLink>
+            )}
+
+            {/* Settings shortcut for Mobile (fora da barra inferior) */}
+            <NavLink
+              to="/settings"
+              aria-label="Configurações"
+              className={({ isActive }) =>
+                `md:hidden w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${isActive ? 'bg-brand/20 text-brand-legible' : 'text-dim hover:text-main'}`
+              }
+            >
+              <Settings size={18} />
+            </NavLink>
+
             {/* Profile shortcut for Mobile */}
             <div
               onClick={handleProfileClick}
@@ -228,7 +259,7 @@ const MainLayout = () => {
 
         {/* Mobile Bottom Navigation */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass-panel border-t border-(--border-subtle) px-1 flex items-center justify-around z-40 pb-safe">
-          {navItems.map((item) => (
+          {mobileNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
