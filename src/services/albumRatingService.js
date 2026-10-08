@@ -45,6 +45,12 @@ export const albumRatingService = {
     return response.data;
   },
 
+  // Link curto (/a/{codigo}): o código sozinho identifica e autoriza a avaliação.
+  getPublicRatingByCode: async (codigo) => {
+    const response = await api.get(`/publico/avaliacoes/codigo/${encodeURIComponent(codigo)}`);
+    return response.data;
+  },
+
   deleteRating: async (albumKey) => {
     await api.delete(`/avaliacoes-album/${encodeURIComponent(albumKey)}`);
   },

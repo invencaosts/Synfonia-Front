@@ -26,7 +26,7 @@ import CookieConsent from './components/ui/CookieConsent';
 import { Capacitor } from '@capacitor/core';
 import { rotaDoDeepLink } from './utils/publicLinks';
 
-// Links do QR code / da legenda compartilhada (https://<api>/avaliacao/{id} ou synfonia://avaliacao/{id})
+// Links do QR code / da legenda compartilhada (https://<host>/a/{codigo}, https://<host>/avaliacao/{id} ou synfonia://avaliacao/{id})
 // chegam aqui quando o app está instalado: tanto com o app aberto quanto abrindo do zero.
 const useDeepLinks = () => {
     const navigate = useNavigate();
@@ -114,6 +114,7 @@ const AppContent = () => {
             {/* Aberta pelo link compartilhado: não exige login (logado, fica dentro do layout normal). */}
             <Route element={authService.isAuthenticated() ? <MainLayout /> : <div className="min-h-screen bg-(--bg-main)"><Outlet /></div>}>
                 <Route path="/avaliacao/:id" element={<AvaliacaoPublicaPage />} />
+                <Route path="/a/:codigo" element={<AvaliacaoPublicaPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

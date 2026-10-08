@@ -39,6 +39,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="synfonia.invencaodev.com" android:pathPrefix="/avaliacao/" />
+                <data android:scheme="https" android:host="synfonia.invencaodev.com" android:pathPrefix="/a/" />
                 <data android:scheme="https" android:host="synfonia.invencaodev.com" android:pathPrefix="/callback" />
             </intent-filter>
 

@@ -1,4 +1,4 @@
-// Converte um link recebido pelo app (https://<host>/avaliacao/x ou synfonia://avaliacao/x)
+// Converte um link recebido pelo app (https://<host>/a/x, https://<host>/avaliacao/x ou synfonia://avaliacao/x)
 // numa rota interna. Só aceita rotas conhecidas; o resto é ignorado.
 export function rotaDoDeepLink(url) {
   let parsed;
@@ -10,6 +10,6 @@ export function rotaDoDeepLink(url) {
   const caminho = parsed.protocol === 'synfonia:'
     ? `/${parsed.host}${parsed.pathname}`
     : parsed.pathname;
-  const rotaConhecida = /^\/(avaliacao|u)\/[^/]+\/?$/.test(caminho) || /^\/callback\/?$/.test(caminho);
+  const rotaConhecida = /^\/(avaliacao|a|u)\/[^/]+\/?$/.test(caminho) || /^\/callback\/?$/.test(caminho);
   return rotaConhecida ? `${caminho}${parsed.search}` : null;
 }

@@ -14,20 +14,23 @@ const formatDate = (iso) => {
 // Destino do link/QR code da imagem de compartilhamento (deep link no app ou rota no web).
 // Funciona sem login: logado, aparece dentro do layout normal; deslogado, sozinha com CTA de cadastro.
 const AvaliacaoPublicaPage = () => {
-  const { id } = useParams();
+  const { id, codigo } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
-  const chaveBusca = `${id || ''}:${token}`;
+  const chaveBusca = codigo ? `c:${codigo}` : `${id || ''}:${token}`;
   const [estado, setEstado] = useState({ chave: chaveBusca, status: 'carregando', rating: null });
   const logado = authService.isAuthenticated();
 
   useEffect(() => {
     let cancelado = false;
-    albumRatingService.getPublicRating(id, token)
+    const busca = codigo
+      ? albumRatingService.getPublicRatingByCode(codigo)
+      : albumRatingService.getPublicRating(id, token);
+    busca
       .then((rating) => { if (!cancelado) setEstado({ chave: chaveBusca, status: 'ok', rating }); })
       .catch(() => { if (!cancelado) setEstado({ chave: chaveBusca, status: 'erro', rating: null }); });
     return () => { cancelado = true; };
-  }, [chaveBusca, id, token]);
+  }, [chaveBusca, codigo, id, token]);
 
   const { status, rating } = estado.chave === chaveBusca
     ? estado
